@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Logging;
@@ -7,12 +8,12 @@ using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class ActivityLogController : BaseNopController
+    public partial class ActivityLogController : BaseAdminController
     {
         #region Fields
 
@@ -44,50 +45,27 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageActivityLog))
                 return AccessDeniedView();
 
-            var activityLogTypeModel = _customerActivityService.GetAllActivityTypes().Select(x => x.ToModel());
-            var gridModel = new GridModel<ActivityLogTypeModel>
-            {
-                Data = activityLogTypeModel,
-                Total = activityLogTypeModel.Count()
-            };
-            return View(gridModel);
-        }
-
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult ListTypes(GridCommand command)
-        {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManageActivityLog))
-                return AccessDeniedView();
-
-            var activityLogTypeModel = _customerActivityService.GetAllActivityTypes().Select(x => x.ToModel());
-            var gridModel = new GridModel<ActivityLogTypeModel>
-            {
-                Data = activityLogTypeModel,
-                Total = activityLogTypeModel.Count()
-            };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+            var model = _customerActivityService
+                .GetAllActivityTypes()
+                .Select(x => x.ToModel())
+                .ToList();
+            return View(model);
         }
 
         [HttpPost]
-        public ActionResult SaveTypes(FormCollection formCollection)
+        public ActionResult SaveTypes(FormCollection form)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageActivityLog))
                 return AccessDeniedView();
 
-            var keys = formCollection.AllKeys.Where(c => c.StartsWith("checkBox_")).Select(c => c.Substring(9));
-            foreach (var key in keys)
+            string formKey = "checkbox_activity_types";
+            var checkedActivityTypes = form[formKey] != null ? form[formKey].Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(x => Convert.ToInt32(x)).ToList() : new List<int>();
+            
+            var activityTypes = _customerActivityService.GetAllActivityTypes();
+            foreach (var activityType in activityTypes)
             {
-                int id;
-                if (Int32.TryParse(key,out id))
-                {
-                    var activityType = _customerActivityService.GetActivityTypeById(id);
-                    activityType.Enabled = formCollection["checkBox_"+key].Equals("false") ? false : true;
-                    _customerActivityService.UpdateActivityType(activityType);
-                }
-
+                activityType.Enabled = checkedActivityTypes.Contains(activityType.Id);
+                _customerActivityService.UpdateActivityType(activityType);
             }
             SuccessNotification(_localizationService.GetResource("Admin.Configuration.ActivityLog.ActivityLogType.Updated"));
             return RedirectToAction("ListTypes");
@@ -124,8 +102,8 @@ namespace Nop.Admin.Controllers
             return View(activityLogSearchModel);
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult ListLogs(GridCommand command, ActivityLogSearchModel model)
+        [HttpPost]
+        public ActionResult ListLogs(DataSourceRequest command, ActivityLogSearchModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageActivityLog))
                 return AccessDeniedView();
@@ -137,7 +115,7 @@ namespace Nop.Admin.Controllers
                             : (DateTime?)_dateTimeHelper.ConvertToUtcTime(model.CreatedOnTo.Value, _dateTimeHelper.CurrentTimeZone).AddDays(1);
 
             var activityLog = _customerActivityService.GetAllActivities(startDateValue, endDateValue,null, model.ActivityLogTypeId, command.Page - 1, command.PageSize);
-            var gridModel = new GridModel<ActivityLogModel>
+            var gridModel = new DataSourceResult()
             {
                 Data = activityLog.Select(x =>
                 {
@@ -148,23 +126,22 @@ namespace Nop.Admin.Controllers
                 }),
                 Total = activityLog.TotalCount
             };
-            return new JsonResult { Data = gridModel};
+            return Json(gridModel);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult AcivityLogDelete(int id, GridCommand command)
+        public ActionResult AcivityLogDelete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageActivityLog))
                 return AccessDeniedView();
 
             var activityLog = _customerActivityService.GetActivityById(id);
             if (activityLog == null)
+            {
                 throw new ArgumentException("No activity log found with the specified id");
-            
+            }
             _customerActivityService.DeleteActivity(activityLog);
 
-            //TODO pass and return current ActivityLogSearchModel
-            return ListLogs(command, new ActivityLogSearchModel());
+            return new NullJsonResult();
         }
 
         public ActionResult ClearAll()

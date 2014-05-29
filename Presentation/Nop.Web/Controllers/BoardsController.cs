@@ -4,7 +4,6 @@ using System.Linq;
 using System.ServiceModel.Syndication;
 using System.Web.Mvc;
 using Nop.Core;
-using Nop.Core.Domain;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Forums;
 using Nop.Core.Domain.Media;
@@ -24,7 +23,7 @@ using Nop.Web.Models.Boards;
 namespace Nop.Web.Controllers
 {
     [NopHttpsRequirement(SslRequirement.No)]
-    public partial class BoardsController : BaseNopController
+    public partial class BoardsController : BasePublicController
     {
         #region Fields
 
@@ -274,7 +273,7 @@ namespace Nop.Web.Controllers
             var feedDescription = _localizationService.GetResource("Forum.ActiveDiscussionsFeedDescription");
 
             var feed = new SyndicationFeed(
-                                    string.Format(feedTitle, _storeContext.CurrentStore.Name),
+                                    string.Format(feedTitle, _storeContext.CurrentStore.GetLocalized(x => x.Name)),
                                     feedDescription,
                                     new Uri(url),
                                     "ActiveDiscussionsRSS",
@@ -394,7 +393,7 @@ namespace Nop.Web.Controllers
                 var feedDescription = _localizationService.GetResource("Forum.ForumFeedDescription");
 
                 var feed = new SyndicationFeed(
-                                        string.Format(feedTitle, _storeContext.CurrentStore.Name, forum.Name),
+                                        string.Format(feedTitle, _storeContext.CurrentStore.GetLocalized(x => x.Name), forum.Name),
                                         feedDescription,
                                         new Uri(url),
                                         string.Format("ForumRSS:{0}", forum.Id),

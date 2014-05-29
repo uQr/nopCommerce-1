@@ -3,11 +3,10 @@ using System.Linq;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Localization;
-using Nop.Core.Domain.Stores;
 using Nop.Services.Configuration;
-using Nop.Services.Customers;
 using Nop.Services.Events;
 using Nop.Services.Localization;
+using Nop.Services.Stores;
 using Nop.Tests;
 using NUnit.Framework;
 using Rhino.Mocks;
@@ -17,12 +16,12 @@ namespace Nop.Services.Tests.Localization
     [TestFixture]
     public class LanguageServiceTests : ServiceTest
     {
-        IRepository<Language> _languageRepo;
-        IRepository<StoreMapping> _storeMappingRepo;
-        ILanguageService _languageService;
-        ISettingService _settingService;
-        IEventPublisher _eventPublisher;
-        LocalizationSettings _localizationSettings;
+        private IRepository<Language> _languageRepo;
+        private IStoreMappingService _storeMappingService;
+        private ILanguageService _languageService;
+        private ISettingService _settingService;
+        private IEventPublisher _eventPublisher;
+        private LocalizationSettings _localizationSettings;
 
         [SetUp]
         public new void SetUp()
@@ -47,7 +46,7 @@ namespace Nop.Services.Tests.Localization
 
             _languageRepo.Expect(x => x.Table).Return(new List<Language>() { lang1, lang2 }.AsQueryable());
 
-            _storeMappingRepo = MockRepository.GenerateMock<IRepository<StoreMapping>>();
+            _storeMappingService = MockRepository.GenerateMock<IStoreMappingService>();
 
             var cacheManager = new NopNullCache();
 
@@ -57,7 +56,7 @@ namespace Nop.Services.Tests.Localization
             _eventPublisher.Expect(x => x.Publish(Arg<object>.Is.Anything));
 
             _localizationSettings = new LocalizationSettings();
-            _languageService = new LanguageService(cacheManager, _languageRepo, _storeMappingRepo,
+            _languageService = new LanguageService(cacheManager, _languageRepo, _storeMappingService,
                 _settingService, _localizationSettings, _eventPublisher);
         }
 

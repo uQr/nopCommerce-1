@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Logging;
 using Nop.Tests;

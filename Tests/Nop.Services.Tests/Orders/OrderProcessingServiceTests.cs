@@ -11,6 +11,7 @@ using Nop.Core.Domain.Localization;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Domain.Shipping;
+using Nop.Core.Domain.Stores;
 using Nop.Core.Domain.Tax;
 using Nop.Core.Plugins;
 using Nop.Services.Affiliates;
@@ -38,69 +39,80 @@ namespace Nop.Services.Tests.Orders
     [TestFixture]
     public class OrderProcessingServiceTests : ServiceTest
     {
-        IWorkContext _workContext;
-        IStoreContext _storeContext;
-        ITaxService _taxService;
-        IShippingService _shippingService;
-        IShipmentService _shipmentService;
-        IPaymentService _paymentService;
-        ICheckoutAttributeParser _checkoutAttributeParser;
-        IDiscountService _discountService;
-        IGiftCardService _giftCardService;
-        IGenericAttributeService _genericAttributeService;
-        TaxSettings _taxSettings;
-        RewardPointsSettings _rewardPointsSettings;
-        ICategoryService _categoryService;
-        IProductAttributeParser _productAttributeParser;
-        IPriceCalculationService _priceCalcService;
-        IOrderTotalCalculationService _orderTotalCalcService;
-        IAddressService _addressService;
-        ShippingSettings _shippingSettings;
-        ILogger _logger;
-        IRepository<ShippingMethod> _shippingMethodRepository;
-        IOrderService _orderService;
-        IWebHelper _webHelper;
-        ILocalizationService _localizationService;
-        ILanguageService _languageService;
-        IProductService _productService;
-        IPriceFormatter _priceFormatter;
-        IProductAttributeFormatter _productAttributeFormatter;
-        IShoppingCartService _shoppingCartService;
-        ICheckoutAttributeFormatter _checkoutAttributeFormatter;
-        ICustomerService _customerService;
-        IEncryptionService _encryptionService;
-        IWorkflowMessageService _workflowMessageService;
-        ICustomerActivityService _customerActivityService;
-        ICurrencyService _currencyService;
-        PaymentSettings _paymentSettings;
-        OrderSettings _orderSettings;
-        LocalizationSettings _localizationSettings;
-        ShoppingCartSettings _shoppingCartSettings;
-        CatalogSettings _catalogSettings;
-        IOrderProcessingService _orderProcessingService;
-        IEventPublisher _eventPublisher;
-        CurrencySettings _currencySettings;
-        IAffiliateService _affiliateService;
-        IVendorService _vendorService;
+        private IWorkContext _workContext;
+        private IStoreContext _storeContext;
+        private ITaxService _taxService;
+        private IShippingService _shippingService;
+        private IShipmentService _shipmentService;
+        private IPaymentService _paymentService;
+        private ICheckoutAttributeParser _checkoutAttributeParser;
+        private IDiscountService _discountService;
+        private IGiftCardService _giftCardService;
+        private IGenericAttributeService _genericAttributeService;
+        private TaxSettings _taxSettings;
+        private RewardPointsSettings _rewardPointsSettings;
+        private ICategoryService _categoryService;
+        private IProductAttributeParser _productAttributeParser;
+        private IPriceCalculationService _priceCalcService;
+        private IOrderTotalCalculationService _orderTotalCalcService;
+        private IAddressService _addressService;
+        private ShippingSettings _shippingSettings;
+        private ILogger _logger;
+        private IRepository<ShippingMethod> _shippingMethodRepository;
+        private IRepository<DeliveryDate> _deliveryDateRepository;
+        private IRepository<Warehouse> _warehouseRepository;
+        private IOrderService _orderService;
+        private IWebHelper _webHelper;
+        private ILocalizationService _localizationService;
+        private ILanguageService _languageService;
+        private IProductService _productService;
+        private IPriceFormatter _priceFormatter;
+        private IProductAttributeFormatter _productAttributeFormatter;
+        private IShoppingCartService _shoppingCartService;
+        private ICheckoutAttributeFormatter _checkoutAttributeFormatter;
+        private ICustomerService _customerService;
+        private IEncryptionService _encryptionService;
+        private IWorkflowMessageService _workflowMessageService;
+        private ICustomerActivityService _customerActivityService;
+        private ICurrencyService _currencyService;
+        private PaymentSettings _paymentSettings;
+        private OrderSettings _orderSettings;
+        private LocalizationSettings _localizationSettings;
+        private ShoppingCartSettings _shoppingCartSettings;
+        private CatalogSettings _catalogSettings;
+        private IOrderProcessingService _orderProcessingService;
+        private IEventPublisher _eventPublisher;
+        private CurrencySettings _currencySettings;
+        private IAffiliateService _affiliateService;
+        private IVendorService _vendorService;
+        private IPdfService _pdfService;
+
+        private Store _store;
 
         [SetUp]
         public new void SetUp()
         {
             _workContext = null;
-            _storeContext = null;
+
+            _store = new Store() { Id = 1 };
+            _storeContext = MockRepository.GenerateMock<IStoreContext>();
+            _storeContext.Expect(x => x.CurrentStore).Return(_store);
 
             var pluginFinder = new PluginFinder();
-            var cacheManager = new NopNullCache();
 
             _shoppingCartSettings = new ShoppingCartSettings();
             _catalogSettings = new CatalogSettings();
+
+            _productService = MockRepository.GenerateMock<IProductService>();
 
             //price calculation service
             _discountService = MockRepository.GenerateMock<IDiscountService>();
             _categoryService = MockRepository.GenerateMock<ICategoryService>();
             _productAttributeParser = MockRepository.GenerateMock<IProductAttributeParser>();
-            _priceCalcService = new PriceCalculationService(_workContext, _discountService,
-                _categoryService, _productAttributeParser, _shoppingCartSettings, _catalogSettings);
+            _priceCalcService = new PriceCalculationService(_workContext, _storeContext,
+                _discountService, _categoryService, 
+                _productAttributeParser,_productService,
+                _shoppingCartSettings, _catalogSettings);
 
             _eventPublisher = MockRepository.GenerateMock<IEventPublisher>();
             _eventPublisher.Expect(x => x.Publish(Arg<object>.Is.Anything));
@@ -112,15 +124,26 @@ namespace Nop.Services.Tests.Orders
             _shippingSettings.ActiveShippingRateComputationMethodSystemNames = new List<string>();
             _shippingSettings.ActiveShippingRateComputationMethodSystemNames.Add("FixedRateTestShippingRateComputationMethod");
             _shippingMethodRepository = MockRepository.GenerateMock<IRepository<ShippingMethod>>();
+            _deliveryDateRepository = MockRepository.GenerateMock<IRepository<DeliveryDate>>();
+            _warehouseRepository = MockRepository.GenerateMock<IRepository<Warehouse>>();
             _logger = new NullLogger();
-            _shippingService = new ShippingService(_shippingMethodRepository,
+            var cacheManager = new NopNullCache();
+            _shippingService = new ShippingService(_shippingMethodRepository, 
+                _deliveryDateRepository,
+                _warehouseRepository,
                 _logger,
+                _productService,
                 _productAttributeParser,
                 _checkoutAttributeParser,
                 _genericAttributeService,
                 _localizationService,
-                _shippingSettings, pluginFinder, 
-                _eventPublisher, _shoppingCartSettings);
+                _addressService,
+                _shippingSettings, 
+                pluginFinder, 
+                _storeContext,
+                _eventPublisher, 
+                _shoppingCartSettings,
+                cacheManager);
             _shipmentService = MockRepository.GenerateMock<IShipmentService>();
             
 
@@ -149,7 +172,6 @@ namespace Nop.Services.Tests.Orders
             _orderService = MockRepository.GenerateMock<IOrderService>();
             _webHelper = MockRepository.GenerateMock<IWebHelper>();
             _languageService = MockRepository.GenerateMock<ILanguageService>();
-            _productService = MockRepository.GenerateMock<IProductService>();
             _priceFormatter= MockRepository.GenerateMock<IPriceFormatter>();
             _productAttributeFormatter= MockRepository.GenerateMock<IProductAttributeFormatter>();
             _shoppingCartService= MockRepository.GenerateMock<IShoppingCartService>();
@@ -161,6 +183,7 @@ namespace Nop.Services.Tests.Orders
             _currencyService = MockRepository.GenerateMock<ICurrencyService>();
             _affiliateService = MockRepository.GenerateMock<IAffiliateService>();
             _vendorService = MockRepository.GenerateMock<IVendorService>();
+            _pdfService = MockRepository.GenerateMock<IPdfService>();
 
             _paymentSettings = new PaymentSettings()
             {
@@ -189,7 +212,7 @@ namespace Nop.Services.Tests.Orders
                 _encryptionService, _workContext, 
                 _workflowMessageService, _vendorService,
                 _customerActivityService, _currencyService, _affiliateService,
-                _eventPublisher, _paymentSettings, _rewardPointsSettings,
+                _eventPublisher,_pdfService, _paymentSettings, _rewardPointsSettings,
                 _orderSettings, _taxSettings, _localizationSettings,
                 _currencySettings);
         }

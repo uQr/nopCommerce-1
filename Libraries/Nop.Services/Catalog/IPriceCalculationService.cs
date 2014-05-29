@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Discounts;
@@ -12,109 +11,64 @@ namespace Nop.Services.Catalog
     public partial interface IPriceCalculationService
     {
         /// <summary>
-        /// Gets a product variant with minimal price
+        /// Get product special price (is valid)
         /// </summary>
-        /// <param name="variants">Product variants</param>
-        /// <param name="customer">The customer</param>
-        /// <param name="includeDiscounts">A value indicating whether include discounts or not for final price computation</param>
-        /// <param name="quantity">Quantity</param>
-        /// <param name="minPrice">Calcualted minimal price</param>
-        /// <returns>A product variant with minimal price</returns>
-        ProductVariant GetProductVariantWithMinimalPrice(IList<ProductVariant> variants,
-            Customer customer, bool includeDiscounts, int quantity, out decimal? minPrice);
-        
-        /// <summary>
-        /// Get product variant special price (is valid)
-        /// </summary>
-        /// <param name="productVariant">Product variant</param>
-        /// <returns>Product variant special price</returns>
-        decimal? GetSpecialPrice(ProductVariant productVariant);
+        /// <param name="product">Product</param>
+        /// <returns>Special price</returns>
+        decimal? GetSpecialPrice(Product product);
 
         /// <summary>
         /// Gets the final price
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
+        /// <param name="product">Product</param>
         /// <param name="includeDiscounts">A value indicating whether include discounts or not for final price computation</param>
         /// <returns>Final price</returns>
-        decimal GetFinalPrice(ProductVariant productVariant, bool includeDiscounts);
+        decimal GetFinalPrice(Product product, bool includeDiscounts);
 
         /// <summary>
         /// Gets the final price
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
-        /// <param name="customer">The customer</param>
-        /// <param name="includeDiscounts">A value indicating whether include discounts or not for final price computation</param>
-        /// <returns>Final price</returns>
-        decimal GetFinalPrice(ProductVariant productVariant,
-            Customer customer, 
-            bool includeDiscounts);
-
-        /// <summary>
-        /// Gets the final price
-        /// </summary>
-        /// <param name="productVariant">Product variant</param>
-        /// <param name="customer">The customer</param>
-        /// <param name="additionalCharge">Additional charge</param>
-        /// <param name="includeDiscounts">A value indicating whether include discounts or not for final price computation</param>
-        /// <returns>Final price</returns>
-        decimal GetFinalPrice(ProductVariant productVariant, 
-            Customer customer, 
-            decimal additionalCharge, 
-            bool includeDiscounts);
-
-        /// <summary>
-        /// Gets the final price
-        /// </summary>
-        /// <param name="productVariant">Product variant</param>
+        /// <param name="product">Product</param>
         /// <param name="customer">The customer</param>
         /// <param name="additionalCharge">Additional charge</param>
         /// <param name="includeDiscounts">A value indicating whether include discounts or not for final price computation</param>
         /// <param name="quantity">Shopping cart item quantity</param>
         /// <returns>Final price</returns>
-        decimal GetFinalPrice(ProductVariant productVariant,
+        decimal GetFinalPrice(Product product,
             Customer customer,
-            decimal additionalCharge, 
-            bool includeDiscounts, 
-            int quantity);
+            decimal additionalCharge = decimal.Zero, 
+            bool includeDiscounts = true, 
+            int quantity = 1);
 
 
 
         /// <summary>
         /// Gets discount amount
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
+        /// <param name="product">Product</param>
         /// <returns>Discount amount</returns>
-        decimal GetDiscountAmount(ProductVariant productVariant);
+        decimal GetDiscountAmount(Product product);
 
         /// <summary>
         /// Gets discount amount
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
-        /// <param name="customer">The customer</param>
-        /// <returns>Discount amount</returns>
-        decimal GetDiscountAmount(ProductVariant productVariant, 
-            Customer customer);
-
-        /// <summary>
-        /// Gets discount amount
-        /// </summary>
-        /// <param name="productVariant">Product variant</param>
+        /// <param name="product">Product</param>
         /// <param name="customer">The customer</param>
         /// <param name="additionalCharge">Additional charge</param>
         /// <returns>Discount amount</returns>
-        decimal GetDiscountAmount(ProductVariant productVariant, 
-            Customer customer, 
-            decimal additionalCharge);
+        decimal GetDiscountAmount(Product product, 
+            Customer customer,
+            decimal additionalCharge = decimal.Zero);
 
         /// <summary>
         /// Gets discount amount
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
+        /// <param name="product">Product</param>
         /// <param name="customer">The customer</param>
         /// <param name="additionalCharge">Additional charge</param>
         /// <param name="appliedDiscount">Applied discount</param>
         /// <returns>Discount amount</returns>
-        decimal GetDiscountAmount(ProductVariant productVariant, 
+        decimal GetDiscountAmount(Product product, 
             Customer customer,
             decimal additionalCharge, 
             out Discount appliedDiscount);
@@ -122,13 +76,13 @@ namespace Nop.Services.Catalog
         /// <summary>
         /// Gets discount amount
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
+        /// <param name="product">Product</param>
         /// <param name="customer">The customer</param>
         /// <param name="additionalCharge">Additional charge</param>
         /// <param name="quantity">Product quantity</param>
         /// <param name="appliedDiscount">Applied discount</param>
         /// <returns>Discount amount</returns>
-        decimal GetDiscountAmount(ProductVariant productVariant, 
+        decimal GetDiscountAmount(Product product, 
             Customer customer,
             decimal additionalCharge, 
             int quantity, 
@@ -150,6 +104,14 @@ namespace Nop.Services.Catalog
         /// <param name="includeDiscounts">A value indicating whether include discounts or not for price computation</param>
         /// <returns>Shopping cart unit price (one item)</returns>
         decimal GetUnitPrice(ShoppingCartItem shoppingCartItem, bool includeDiscounts);
+
+        /// <summary>
+        /// Gets the product cost (one item)
+        /// </summary>
+        /// <param name="product">Product</param>
+        /// <param name="attributesXml">Shopping cart item attributes in XML</param>
+        /// <returns>Product cost (one item)</returns>
+        decimal GetProductCost(Product product, string attributesXml);
         
 
 
@@ -168,6 +130,16 @@ namespace Nop.Services.Catalog
         /// <param name="appliedDiscount">Applied discount</param>
         /// <returns>Discount amount</returns>
         decimal GetDiscountAmount(ShoppingCartItem shoppingCartItem, out Discount appliedDiscount);
-        
+
+
+
+
+
+        /// <summary>
+        /// Get a price adjustment of a product variant attribute value
+        /// </summary>
+        /// <param name="pvav">Product variant attribute value</param>
+        /// <returns>price adjustment</returns>
+        decimal GetProductVariantAttributeValuePriceAdjustment(ProductVariantAttributeValue pvav);
     }
 }

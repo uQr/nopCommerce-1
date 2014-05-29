@@ -1,24 +1,28 @@
 ﻿using System.Collections.Generic;
 using System.Web.Mvc;
 using System.Web.Routing;
+using Nop.Core;
 using Nop.Services.Authentication.External;
 using Nop.Web.Models.Customer;
 
 namespace Nop.Web.Controllers
 {
-    public partial class ExternalAuthenticationController : BaseNopController
+    public partial class ExternalAuthenticationController : BasePublicController
     {
 		#region Fields
 
         private readonly IOpenAuthenticationService _openAuthenticationService;
+        private readonly IStoreContext _storeContext;
 
         #endregion
 
 		#region Constructors
 
-        public ExternalAuthenticationController(IOpenAuthenticationService openAuthenticationService)
+        public ExternalAuthenticationController(IOpenAuthenticationService openAuthenticationService,
+            IStoreContext storeContext)
         {
             this._openAuthenticationService = openAuthenticationService;
+            this._storeContext = storeContext;
         }
 
         #endregion
@@ -37,8 +41,8 @@ namespace Nop.Web.Controllers
             //model
             var model = new List<ExternalAuthenticationMethodModel>();
 
-            var externalAuthenticationMethods = _openAuthenticationService.LoadActiveExternalAuthenticationMethods();
-            foreach (var eam in externalAuthenticationMethods)
+            foreach (var eam in _openAuthenticationService
+                .LoadActiveExternalAuthenticationMethods(_storeContext.CurrentStore.Id))
             {
                 var eamModel = new ExternalAuthenticationMethodModel();
 

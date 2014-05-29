@@ -17,20 +17,11 @@ namespace Nop.Data.Tests.Catalog
                           IsRequired = true,
                           AttributeControlType = AttributeControlType.DropdownList,
                           DisplayOrder = 1,
-                          ProductVariant = new ProductVariant()
-                                           {
-                                               Name = "Product variant name 1",
-                                               CreatedOnUtc = new DateTime(2010, 01, 03),
-                                               UpdatedOnUtc = new DateTime(2010, 01, 04),
-                                               Product = new Product()
-                                                         {
-                                                             Name = "Name 1",
-                                                             Published = true,
-                                                             Deleted = false,
-                                                             CreatedOnUtc = new DateTime(2010, 01, 01),
-                                                             UpdatedOnUtc = new DateTime(2010, 01, 02),
-                                                         }
-                                           },
+                          ValidationMinLength = 2,
+                          ValidationMaxLength = 3,
+                          ValidationFileAllowedExtensions = "ValidationFileAllowedExtensions 1",
+                          ValidationFileMaximumSize = 4,
+                          Product = GetTestProduct(),
                           ProductAttribute = new ProductAttribute()
                           {
                               Name = "Name 1",
@@ -44,12 +35,25 @@ namespace Nop.Data.Tests.Catalog
             fromDb.IsRequired.ShouldEqual(true);
             fromDb.AttributeControlType.ShouldEqual(AttributeControlType.DropdownList);
             fromDb.DisplayOrder.ShouldEqual(1);
+            fromDb.ValidationMinLength.ShouldEqual(2);
+            fromDb.ValidationMaxLength.ShouldEqual(3);
+            fromDb.ValidationFileAllowedExtensions.ShouldEqual("ValidationFileAllowedExtensions 1");
+            fromDb.ValidationFileMaximumSize.ShouldEqual(4);
 
-            fromDb.ProductVariant.ShouldNotBeNull();
-            fromDb.ProductVariant.Name.ShouldEqual("Product variant name 1");
+            fromDb.Product.ShouldNotBeNull();
 
             fromDb.ProductAttribute.ShouldNotBeNull();
             fromDb.ProductAttribute.Name.ShouldEqual("Name 1");
+        }
+
+        protected Product GetTestProduct()
+        {
+            return new Product
+            {
+                Name = "Product name 1",
+                CreatedOnUtc = new DateTime(2010, 01, 03),
+                UpdatedOnUtc = new DateTime(2010, 01, 04),
+            };
         }
     }
 }

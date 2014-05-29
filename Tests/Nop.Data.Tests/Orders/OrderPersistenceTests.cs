@@ -72,6 +72,7 @@ namespace Nop.Data.Tests.Orders
                 ShippingAddress = null,
                 ShippingMethod = "ShippingMethod1",
                 ShippingRateComputationMethodSystemName="ShippingRateComputationMethodSystemName1",
+                CustomValuesXml = "CustomValuesXml1",
                 Deleted = false,
                 CreatedOnUtc = new DateTime(2010, 01, 04)
             };
@@ -127,6 +128,7 @@ namespace Nop.Data.Tests.Orders
             fromDb.ShippingAddress.ShouldBeNull();
             fromDb.ShippingMethod.ShouldEqual("ShippingMethod1");
             fromDb.ShippingRateComputationMethodSystemName.ShouldEqual("ShippingRateComputationMethodSystemName1");
+            fromDb.CustomValuesXml.ShouldEqual("CustomValuesXml1");
             fromDb.Deleted.ShouldEqual(false);
             fromDb.CreatedOnUtc.ShouldEqual(new DateTime(2010, 01, 04));
         }
@@ -261,7 +263,7 @@ namespace Nop.Data.Tests.Orders
         }
 
         [Test]
-        public void Can_save_and_load_order_with_orderProductVariants()
+        public void Can_save_and_load_order_with_orderItems()
         {
             var order = new Order
             {
@@ -270,20 +272,20 @@ namespace Nop.Data.Tests.Orders
                 BillingAddress = GetTestBillingAddress(),
                 CreatedOnUtc = new DateTime(2010, 01, 01)
             };
-            order.OrderProductVariants.Add
+            order.OrderItems.Add
                 (
-                    new OrderProductVariant()
+                    new OrderItem()
                     {
-                        ProductVariant = GetTestProductVariant(),
+                        Product = GetTestProduct(),
                         Quantity = 1
                     }
                 );
             var fromDb = SaveAndLoadEntity(order);
             fromDb.ShouldNotBeNull();
 
-            fromDb.OrderProductVariants.ShouldNotBeNull();
-            fromDb.OrderProductVariants.Count.ShouldEqual(1);
-            fromDb.OrderProductVariants.First().Quantity.ShouldEqual(1);
+            fromDb.OrderItems.ShouldNotBeNull();
+            fromDb.OrderItems.Count.ShouldEqual(1);
+            fromDb.OrderItems.First().Quantity.ShouldEqual(1);
         }
         
         [Test]
@@ -314,21 +316,13 @@ namespace Nop.Data.Tests.Orders
             fromDb.Shipments.First().TrackingNumber.ShouldEqual("TrackingNumber 1");
         }
 
-        protected ProductVariant GetTestProductVariant()
+        protected Product GetTestProduct()
         {
-            return new ProductVariant
+            return new Product
             {
-                Name = "Product variant name 1",
-                Sku = "sku 1",
-                Description = "description",
+                Name = "Product name 1",
                 CreatedOnUtc = new DateTime(2010, 01, 03),
                 UpdatedOnUtc = new DateTime(2010, 01, 04),
-                Product = new Product()
-                {
-                    Name = "Name 1",
-                    CreatedOnUtc = new DateTime(2010, 01, 01),
-                    UpdatedOnUtc = new DateTime(2010, 01, 02)
-                }
             };
         }
         

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Nop.Core;
 using Nop.Core.Domain.Catalog;
 
 namespace Nop.Services.Catalog
@@ -19,8 +20,10 @@ namespace Nop.Services.Catalog
         /// <summary>
         /// Gets all product attributes
         /// </summary>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
         /// <returns>Product attribute collection</returns>
-        IList<ProductAttribute> GetAllProductAttributes();
+        IPagedList<ProductAttribute> GetAllProductAttributes(int pageIndex = 0, int pageSize = int.MaxValue);
 
         /// <summary>
         /// Gets a product attribute 
@@ -54,9 +57,9 @@ namespace Nop.Services.Catalog
         /// <summary>
         /// Gets product variant attribute mappings by product identifier
         /// </summary>
-        /// <param name="productVariantId">The product variant identifier</param>
+        /// <param name="productId">The product identifier</param>
         /// <returns>Product variant attribute mapping collection</returns>
-        IList<ProductVariantAttribute> GetProductVariantAttributesByProductVariantId(int productVariantId);
+        IList<ProductVariantAttribute> GetProductVariantAttributesByProductId(int productId);
 
         /// <summary>
         /// Gets a product variant attribute mapping
@@ -115,7 +118,7 @@ namespace Nop.Services.Catalog
 
         #endregion
 
-        #region Product variant attribute compinations (ProductVariantAttributeCombination)
+        #region Product variant attribute combinations (ProductVariantAttributeCombination)
 
         /// <summary>
         /// Deletes a product variant attribute combination
@@ -126,9 +129,9 @@ namespace Nop.Services.Catalog
         /// <summary>
         /// Gets all product variant attribute combinations
         /// </summary>
-        /// <param name="productVariantId">Product variant identifier</param>
+        /// <param name="productId">Product identifier</param>
         /// <returns>Product variant attribute combination collection</returns>
-        IList<ProductVariantAttributeCombination> GetAllProductVariantAttributeCombinations(int productVariantId);
+        IList<ProductVariantAttributeCombination> GetAllProductVariantAttributeCombinations(int productId);
 
         /// <summary>
         /// Gets a product variant attribute combination

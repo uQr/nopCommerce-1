@@ -56,6 +56,11 @@ namespace Nop.Core.Domain.Tax
         public bool HideTaxInOrderSummary { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether we should always exclude tax from order subtotal (no matter of selected tax dispay type)
+        /// </summary>
+        public bool ForceTaxExclusionFromOrderSubtotal { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether shipping price is taxable
         /// </summary>
         public bool ShippingIsTaxable { get; set; }
@@ -104,6 +109,11 @@ namespace Nop.Core.Domain.Tax
         /// Gets or sets a value indicating whether we should use the EU web service to validate VAT numbers
         /// </summary>
         public bool EuVatUseWebService { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether VAT numbers should be automatically assumed valid
+        /// </summary>
+        public bool EuVatAssumeValid { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether we should notify a store owner when a new VAT number is submitted

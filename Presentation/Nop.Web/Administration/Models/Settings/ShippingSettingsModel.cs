@@ -7,6 +7,10 @@ namespace Nop.Admin.Models.Settings
     public partial class ShippingSettingsModel : BaseNopModel
     {
         public int ActiveStoreScopeConfiguration { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Shipping.UseWarehouseLocation")]
+        public bool UseWarehouseLocation { get; set; }
+        public bool UseWarehouseLocation_OverrideForStore { get; set; }
     
         [NopResourceDisplayName("Admin.Configuration.Settings.Shipping.FreeShippingOverXEnabled")]
         public bool FreeShippingOverXEnabled { get; set; }
@@ -28,6 +32,10 @@ namespace Nop.Admin.Models.Settings
         public bool DisplayShipmentEventsToCustomers { get; set; }
         public bool DisplayShipmentEventsToCustomers_OverrideForStore { get; set; }
 
+        [NopResourceDisplayName("Admin.Configuration.Settings.Shipping.BypassShippingMethodSelectionIfOnlyOne")]
+        public bool BypassShippingMethodSelectionIfOnlyOne { get; set; }
+        public bool BypassShippingMethodSelectionIfOnlyOne_OverrideForStore { get; set; }
+        
         [NopResourceDisplayName("Admin.Configuration.Settings.Shipping.ShippingOriginAddress")]
         public AddressModel ShippingOriginAddress { get; set; }
         public bool ShippingOriginAddress_OverrideForStore { get; set; }

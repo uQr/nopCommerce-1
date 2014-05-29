@@ -1,15 +1,9 @@
-﻿using System.Collections.Generic;
-using Nop.Core.Configuration;
+﻿using Nop.Core.Configuration;
 
 namespace Nop.Core.Domain.Catalog
 {
     public class CatalogSettings : ISettings
     {
-        public CatalogSettings()
-        {
-            FileUploadAllowedExtensions = new List<string>();
-        }
-
         /// <summary>
         /// Gets or sets a value indicating whether to display product SKU
         /// </summary>
@@ -24,6 +18,11 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets a value indicating whether to display GTIN of a product
         /// </summary>
         public bool ShowGtin { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether "Free shipping" icon should be displayed for products
+        /// </summary>
+        public bool ShowFreeShippingNotification { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether product sorting is enabled
@@ -180,6 +179,11 @@ namespace Nop.Core.Domain.Catalog
         public bool EnableDynamicPriceUpdate { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether we should dynamically load SKU/MPN/GTIN for appropriate attribute combinations when changing product attributes. This option works only with "EnableDynamicPriceUpdate" enabled
+        /// </summary>
+        public bool EnableDynamicSkuMpnGtinUpdate { get; set; }
+
+        /// <summary>
         /// Gets or sets a number of product tags that appear in the tag cloud
         /// </summary>
         public int NumberOfProductTags { get; set; }
@@ -220,14 +224,24 @@ namespace Nop.Core.Domain.Catalog
         public bool DisplayTierPricesWithDiscounts { get; set; }
         
         /// <summary>
-        /// Gets or sets a value indicating whether to ignore discounts (side-wide)
+        /// Gets or sets a value indicating whether to ignore discounts (side-wide). It can significantly improve performance when enabled.
         /// </summary>
         public bool IgnoreDiscounts { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether to ignore featured products (side-wide)
+        /// Gets or sets a value indicating whether to ignore featured products (side-wide). It can significantly improve performance when enabled.
         /// </summary>
         public bool IgnoreFeaturedProducts { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to ignore ACL rules (side-wide). It can significantly improve performance when enabled.
+        /// </summary>
+        public bool IgnoreAcl { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to ignore "limit per store" rules (side-wide). It can significantly improve performance when enabled.
+        /// </summary>
+        public bool IgnoreStoreLimitations { get; set; }
 
         /// <summary>
         /// Gets or sets the default value to use for Category page size options (for new Categories)
@@ -245,18 +259,28 @@ namespace Nop.Core.Domain.Catalog
         public int MaximumBackInStockSubscriptions { get; set; }
 
         /// <summary>
-        /// Gets or sets a maximum file upload size in bytes for product attributes ('File Upload' type)
+        /// Gets or sets the value indicating how many subcategory levels to display in the top menu with categories
         /// </summary>
-        public int FileUploadMaximumSizeBytes { get; set; }
-
-        /// <summary>
-        /// Gets or sets a list of allowed file extensions for customer uploaded files
-        /// </summary>
-        public List<string> FileUploadAllowedExtensions { get; set; }
+        public int TopCategoryMenuSubcategoryLevelsToDisplay { get; set; }
 
         /// <summary>
         /// Gets or sets the value indicating how many manufacturers to display in manufacturers block
         /// </summary>
         public int ManufacturersBlockItemsToDisplay { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to display information about shipping and tax in the footer (used in Germany)
+        /// </summary>
+        public bool DisplayTaxShippingInfoFooter { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to display information about shipping and tax on product details pages (used in Germany)
+        /// </summary>
+        public bool DisplayTaxShippingInfoProductDetailsPage { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether to display information about shipping and tax in product boxes (used in Germany)
+        /// </summary>
+        public bool DisplayTaxShippingInfoProductBoxes { get; set; }
     }
 }

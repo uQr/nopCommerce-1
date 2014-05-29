@@ -32,7 +32,7 @@
                 @Html.NopLabelFor(model => model.DeleteGuests.EndDate):
             </td>
             <td class="adminData">
-                @Html.EditorFor(model => Model.DeleteGuests.EndDate)
+                @Html.EditorFor(model => model.DeleteGuests.EndDate)
             </td>
         </tr>
         <tr>
@@ -40,12 +40,12 @@
                 @Html.NopLabelFor(model => model.DeleteGuests.OnlyWithoutShoppingCart):
             </td>
             <td class="adminData">
-                @Html.EditorFor(model => Model.DeleteGuests.OnlyWithoutShoppingCart)
+                @Html.EditorFor(model => model.DeleteGuests.OnlyWithoutShoppingCart)
             </td>
         </tr>
         <tr>
             <td colspan="2">
-                <input type="submit" name="delete-guests" class="t-button" value="@T("Admin.Common.Delete")" />
+                <input type="submit" name="delete-guests" class="k-button" value="@T("Admin.Common.Delete")" />
             </td>
         </tr>
         @if (Model.DeleteGuests.NumberOfDeletedCustomers.HasValue)
@@ -78,7 +78,7 @@
         </tr>
         <tr>
             <td colspan="2">
-                <input type="submit" name="delete-abondoned-carts" class="t-button" value="@T("Admin.Common.Delete")" />
+                <input type="submit" name="delete-abondoned-carts" class="k-button" value="@T("Admin.Common.Delete")" />
             </td>
         </tr>
         @if (Model.DeleteAbandonedCarts.NumberOfDeletedItems.HasValue)
@@ -114,12 +114,12 @@
                 @Html.NopLabelFor(model => model.DeleteExportedFiles.EndDate):
             </td>
             <td class="adminData">
-                @Html.EditorFor(model => Model.DeleteExportedFiles.EndDate)
+                @Html.EditorFor(model => model.DeleteExportedFiles.EndDate)
             </td>
         </tr>
         <tr>
             <td colspan="2">
-                <input type="submit" name="delete-exported-files" class="t-button" value="@T("Admin.Common.Delete")" />
+                <input type="submit" name="delete-exported-files" class="k-button" value="@T("Admin.Common.Delete")" />
             </td>
         </tr>
         @if (Model.DeleteExportedFiles.NumberOfDeletedFiles.HasValue)

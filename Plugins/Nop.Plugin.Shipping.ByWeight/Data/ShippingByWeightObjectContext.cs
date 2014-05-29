@@ -43,10 +43,6 @@ namespace Nop.Plugin.Shipping.ByWeight.Data
         /// </summary>
         public void Install()
         {
-            //It's required to set initializer to null (for SQL Server Compact).
-            //otherwise, you'll get something like "The model backing the 'your context name' context has changed since the database was created. Consider using Code First Migrations to update the database"
-            Database.SetInitializer<ShippingByWeightObjectContext>(null);
-
             //create the table
             var dbScript = CreateDatabaseScript();
             Database.ExecuteSqlCommand(dbScript);
@@ -59,11 +55,16 @@ namespace Nop.Plugin.Shipping.ByWeight.Data
         public void Uninstall()
         {
             //drop the table
-            var dbScript = "DROP TABLE ShippingByWeight";
-            Database.ExecuteSqlCommand(dbScript);
-            SaveChanges();
+            this.DropPluginTable("ShippingByWeight");
         }
 
+        /// <summary>
+        /// Execute stores procedure and load a list of entities at the end
+        /// </summary>
+        /// <typeparam name="TEntity">Entity type</typeparam>
+        /// <param name="commandText">Command text</param>
+        /// <param name="parameters">Parameters</param>
+        /// <returns>Entities</returns>
         public IList<TEntity> ExecuteStoredProcedureList<TEntity>(string commandText, params object[] parameters) where TEntity : BaseEntity, new()
         {
             throw new NotImplementedException();
@@ -85,10 +86,11 @@ namespace Nop.Plugin.Shipping.ByWeight.Data
         /// Executes the given DDL/DML command against the database.
         /// </summary>
         /// <param name="sql">The command string</param>
+        /// <param name="doNotEnsureTransaction">false - the transaction creation is not ensured; true - the transaction creation is ensured.</param>
         /// <param name="timeout">Timeout value, in seconds. A null value indicates that the default value of the underlying provider will be used</param>
         /// <param name="parameters">The parameters to apply to the command string.</param>
         /// <returns>The result returned by the database after executing the command.</returns>
-        public int ExecuteSqlCommand(string sql, int? timeout = null, params object[] parameters)
+        public int ExecuteSqlCommand(string sql, bool doNotEnsureTransaction = false, int? timeout = null, params object[] parameters)
         {
             throw new NotImplementedException();
         }

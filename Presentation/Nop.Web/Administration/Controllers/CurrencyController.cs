@@ -12,12 +12,11 @@ using Nop.Services.Localization;
 using Nop.Services.Security;
 using Nop.Services.Stores;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class CurrencyController :  BaseNopController
+    public partial class CurrencyController :  BaseAdminController
     {
         #region Fields
 
@@ -132,11 +131,6 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCurrencies))
                 return AccessDeniedView();
 
-            var currenciesModel = _currencyService.GetAllCurrencies(true).Select(x => x.ToModel()).ToList();
-            foreach (var currency in currenciesModel)
-                currency.IsPrimaryExchangeRateCurrency = currency.Id == _currencySettings.PrimaryExchangeRateCurrencyId ? true : false;
-            foreach (var currency in currenciesModel)
-                currency.IsPrimaryStoreCurrency = currency.Id == _currencySettings.PrimaryStoreCurrencyId ? true : false;
             if (liveRates)
             {
                 try
@@ -163,12 +157,8 @@ namespace Nop.Admin.Controllers
                 });
             }
             ViewBag.AutoUpdateEnabled = _currencySettings.AutoUpdateEnabled;
-            var gridModel = new GridModel<CurrencyModel>
-            {
-                Data = currenciesModel,
-                Total = currenciesModel.Count()
-            };
-            return View(gridModel);
+           
+            return View();
         }
 
         public ActionResult ApplyRate(string currencyCode, decimal rate)
@@ -176,14 +166,14 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCurrencies))
                 return AccessDeniedView();
 
-            Currency currency = _currencyService.GetCurrencyByCode(currencyCode);
+            var currency = _currencyService.GetCurrencyByCode(currencyCode);
             if (currency != null)
             {
                 currency.Rate = rate;
                 currency.UpdatedOnUtc = DateTime.UtcNow;
                 _currencyService.UpdateCurrency(currency);
             }
-            return RedirectToAction("List","Currency", new { liveRates=true });
+            return RedirectToAction("List","Currency", new { liveRates = true });
         }
 
         [HttpPost]
@@ -198,8 +188,8 @@ namespace Nop.Admin.Controllers
             return RedirectToAction("List", "Currency");
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCurrencies))
                 return AccessDeniedView();
@@ -209,16 +199,13 @@ namespace Nop.Admin.Controllers
                 currency.IsPrimaryExchangeRateCurrency = currency.Id == _currencySettings.PrimaryExchangeRateCurrencyId ? true : false;
             foreach (var currency in currenciesModel)
                 currency.IsPrimaryStoreCurrency = currency.Id == _currencySettings.PrimaryStoreCurrencyId ? true : false;
-            
-            var gridModel = new GridModel<CurrencyModel>
+
+            var gridModel = new DataSourceResult
             {
                 Data = currenciesModel,
                 Total = currenciesModel.Count
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+            return Json(gridModel);
         }
         
         public ActionResult MarkAsPrimaryExchangeRateCurrency(int id)
@@ -261,7 +248,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(CurrencyModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCurrencies))
@@ -313,7 +300,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Edit(CurrencyModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCurrencies))
@@ -336,7 +323,18 @@ namespace Nop.Admin.Controllers
 
 
                 SuccessNotification(_localizationService.GetResource("Admin.Configuration.Currencies.Updated"));
-                return continueEditing ? RedirectToAction("Edit", new { id = currency.Id }) : RedirectToAction("List");
+
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", new {id = currency.Id});
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
             //If we got this far, something failed, redisplay form

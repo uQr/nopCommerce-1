@@ -1,5 +1,4 @@
-﻿using Nop.Core.Domain.Blogs;
-using Nop.Core.Domain.Stores;
+﻿using Nop.Core.Domain.Stores;
 using Nop.Tests;
 using NUnit.Framework;
 

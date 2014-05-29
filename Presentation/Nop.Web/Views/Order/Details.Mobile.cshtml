@@ -125,9 +125,9 @@
                         @using (Html.BeginRouteForm("OrderDetails", FormMethod.Post,
                                 new Dictionary<string, Object> { { "data-ajax", "false" } }))
                         {
-                            <input type="submit" name="repost-payment" value="@T("Order.CompletePayment")" />
+                            <input type="submit" name="repost-payment" value="@T("Order.RetryPayment")" />
                             <p class="hint">
-                                <em>@T("Order.CompletePayment.Hint")</em>
+                                <em>@T("Order.RetryPayment.Hint")</em>
                             </p>
                         }
                     </div>
@@ -239,7 +239,7 @@
                     <li>
                         <div class="products-box">
                             <div class="product">
-                                <strong><a href="@Url.RouteUrl("Product", new { SeName = item.ProductSeName })" title="View details">@item.ProductName</a></strong>
+                                <strong><a href="@Url.RouteUrl("Product", new { SeName = item.ProductSeName })">@item.ProductName</a></strong>
                                 @if (!String.IsNullOrEmpty(item.AttributeInfo))
                                 {
                                     <div class="attributes">
@@ -288,8 +288,9 @@
                 <tbody>
                     <tr>
                         <td class="cart-total-left">
-                            <strong>
-                                @T("Order.SubTotal"):</strong>
+                            <span class="nobr">
+                                @T("Order.SubTotal"):
+                            </span>
                         </td>
                         <td class="cart-total-right">
                             <span class="nobr">
@@ -301,8 +302,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.SubTotalDiscount"):</strong>
+                                <span class="nobr">
+                                    @T("Order.SubTotalDiscount"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -315,8 +317,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.Shipping"):</strong>
+                                <span class="nobr">
+                                    @T("Order.Shipping"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -329,8 +332,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.PaymentMethodAdditionalFee"):</strong>
+                                <span class="nobr">
+                                    @T("Order.PaymentMethodAdditionalFee"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -345,8 +349,9 @@
                         {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @string.Format(T("Order.TaxRateLine").Text, taxRate.Rate):</strong>
+                                <span class="nobr">
+                                    @string.Format(T("Order.TaxRateLine").Text, taxRate.Rate):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -360,8 +365,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.Tax"):</strong>
+                                <span class="nobr">
+                                    @T("Order.Tax"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -374,8 +380,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.TotalDiscount"):</strong>
+                                <span class="nobr">
+                                    @T("Order.TotalDiscount"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -390,8 +397,9 @@
                         {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @string.Format(T("Order.GiftCardInfo").Text, gc.CouponCode):</strong>
+                                <span class="nobr">
+                                    @string.Format(T("Order.GiftCardInfo").Text, gc.CouponCode):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -405,7 +413,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>@string.Format(T("Order.RewardPoints").Text, Model.RedeemedRewardPoints):</strong>
+                                <span class="nobr">
+                                    @string.Format(T("Order.RewardPoints").Text, Model.RedeemedRewardPoints):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -416,12 +426,16 @@
                     }
                     <tr>
                         <td class="cart-total-left">
-                            <strong>
-                                @T("Order.OrderTotal"):</strong>
+                            <span class="nobr">
+                                @T("Order.OrderTotal"):
+                            </span>
                         </td>
                         <td class="cart-total-right">
-                            <span class="nobr"><strong>
-                                @Model.OrderTotal</strong> </span>
+                            <span class="nobr">
+                                <strong>
+                                    @Model.OrderTotal
+                                </strong> 
+                            </span>
                         </td>
                     </tr>
                 </tbody>
@@ -479,6 +493,10 @@
                         <div class="ordernotes-box">
                             <div>@T("Order.Notes.CreatedOn"): @item.CreatedOn.ToString()</div>
                             <div>@T("Order.Notes.Note"): @Html.Raw(item.Note)</div>
+                            @if (item.HasDownload)
+                            {
+                                <div class="download"><a href="@Url.RouteUrl("GetOrderNoteFile", new { ordernoteid = item.Id })">@T("Order.Notes.Download")</a></div>
+                            }
                         </div>
                     </li>
                 }

@@ -14,12 +14,12 @@ using Nop.Services.Logging;
 using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class DiscountController : BaseNopController
+    public partial class DiscountController : BaseAdminController
     {
         #region Fields
 
@@ -102,16 +102,16 @@ namespace Nop.Admin.Controllers
                 }
 
                 //applied to product variants
-                foreach (var pv in discount.AppliedToProductVariants)
+                foreach (var product in discount.AppliedToProducts)
                 {
-                    if (pv != null && !pv.Deleted)
+                    if (product != null && !product.Deleted)
                     {
-                        var appliedToProductVariantModel = new DiscountModel.AppliedToProductVariantModel()
+                        var appliedToProductModel = new DiscountModel.AppliedToProductModel()
                         {
-                            ProductVariantId = pv.Id,
-                            FullProductName = pv.FullProductName
+                            ProductId = product.Id,
+                            ProductName = product.Name
                         };
-                        model.AppliedToProductVariantModels.Add(appliedToProductVariantModel);
+                        model.AppliedToProductModels.Add(appliedToProductModel);
                     }
                 }
 
@@ -147,26 +147,28 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
                 return AccessDeniedView();
 
-            var gridModel = new GridModel<DiscountModel>();
-            return View(gridModel);
+            return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
                 return AccessDeniedView();
 
             var discounts = _discountService.GetAllDiscounts(null, null, true);
-            var gridModel = new GridModel<DiscountModel>
+            var gridModel = new DataSourceResult
             {
-                Data = discounts.PagedForCommand(command).Select(x => x.ToModel()),
+                Data = discounts.PagedForCommand(command).Select(x =>
+                {
+                    var discountModel = x.ToModel();
+                    discountModel.PrimaryStoreCurrencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
+                    return discountModel;
+                }),
                 Total = discounts.Count
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
         
         //create
@@ -182,7 +184,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(DiscountModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
@@ -221,7 +223,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Edit(DiscountModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
@@ -253,20 +255,31 @@ namespace Nop.Admin.Controllers
                 if (prevDiscountType == DiscountType.AssignedToSkus
                     && discount.DiscountType != DiscountType.AssignedToSkus)
                 {
-                    //applied to product variants
-                    var productVariants = discount.AppliedToProductVariants.ToList();
-                    discount.AppliedToProductVariants.Clear();
+                    //applied to products
+                    var products = discount.AppliedToProducts.ToList();
+                    discount.AppliedToProducts.Clear();
                     _discountService.UpdateDiscount(discount);
                     //update "HasDiscountsApplied" property
-                    foreach (var pv in productVariants)
-                        _productService.UpdateHasDiscountsApplied(pv);
+                    foreach (var p in products)
+                        _productService.UpdateHasDiscountsApplied(p);
                 }
 
                 //activity log
                 _customerActivityService.InsertActivity("EditDiscount", _localizationService.GetResource("ActivityLog.EditDiscount"), discount.Name);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Promotions.Discounts.Updated"));
-                return continueEditing ? RedirectToAction("Edit", discount.Id) : RedirectToAction("List");
+
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", discount.Id);
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
             //If we got this far, something failed, redisplay form
@@ -288,16 +301,16 @@ namespace Nop.Admin.Controllers
 
             //applied to categories
             var categories = discount.AppliedToCategories.ToList();
-            //applied to product variants
-            var productVariants = discount.AppliedToProductVariants.ToList();
+            //applied to products
+            var products = discount.AppliedToProducts.ToList();
 
             _discountService.DeleteDiscount(discount);
             
             //update "HasDiscountsApplied" properties
             foreach (var category in categories)
                 _categoryService.UpdateHasDiscountsApplied(category);
-            foreach (var pv in productVariants)
-                _productService.UpdateHasDiscountsApplied(pv);
+            foreach (var p in products)
+                _productService.UpdateHasDiscountsApplied(p);
 
             //activity log
             _customerActivityService.InsertActivity("DeleteDiscount", _localizationService.GetResource("ActivityLog.DeleteDiscount"), discount.Name);
@@ -375,8 +388,8 @@ namespace Nop.Admin.Controllers
 
         #region Discount usage history
         
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult UsageHistoryList(int discountId, GridCommand command)
+        [HttpPost]
+        public ActionResult UsageHistoryList(int discountId, DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
                 return AccessDeniedView();
@@ -386,8 +399,8 @@ namespace Nop.Admin.Controllers
                 throw new ArgumentException("No discount found with the specified id");
 
             var duh = _discountService.GetAllDiscountUsageHistory(discount.Id, null, null, command.Page - 1, command.PageSize);
-            
-            var model = new GridModel<DiscountModel.DiscountUsageHistoryModel>
+
+            var gridModel = new DataSourceResult
             {
                 Data = duh.Select(x =>
                 {
@@ -401,14 +414,12 @@ namespace Nop.Admin.Controllers
                 }),
                 Total = duh.TotalCount
             };
-            return new JsonResult
-            {
-                Data = model
-            };
+
+            return Json(gridModel);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult UsageHistoryDelete(int discountId, int id, GridCommand command)
+        [HttpPost]
+        public ActionResult UsageHistoryDelete(int discountId, int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageDiscounts))
                 return AccessDeniedView();
@@ -420,7 +431,8 @@ namespace Nop.Admin.Controllers
             var duh = _discountService.GetDiscountUsageHistoryById(id);
             if (duh != null)
                 _discountService.DeleteDiscountUsageHistory(duh);
-            return UsageHistoryList(discountId, command);
+
+            return new NullJsonResult();
         }
 
         #endregion

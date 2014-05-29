@@ -24,11 +24,11 @@ namespace Nop.Services.Messages
         /// <summary>
         /// Executes a task
         /// </summary>
-        public void Execute()
+        public virtual void Execute()
         {
             var maxTries = 3;
             var queuedEmails = _queuedEmailService.SearchEmails(null, null, null, null,
-                true, maxTries, false, 0, 10000);
+                true, maxTries, false, 0, 500);
             foreach (var queuedEmail in queuedEmails)
             {
                 var bcc = String.IsNullOrWhiteSpace(queuedEmail.Bcc) 
@@ -41,7 +41,8 @@ namespace Nop.Services.Messages
                 try
                 {
                     _emailSender.SendEmail(queuedEmail.EmailAccount, queuedEmail.Subject, queuedEmail.Body,
-                       queuedEmail.From, queuedEmail.FromName, queuedEmail.To, queuedEmail.ToName, bcc, cc);
+                       queuedEmail.From, queuedEmail.FromName, queuedEmail.To, queuedEmail.ToName, bcc, cc,
+                       queuedEmail.AttachmentFilePath, queuedEmail.AttachmentFileName);
 
                     queuedEmail.SentOnUtc = DateTime.UtcNow;
                 }

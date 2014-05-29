@@ -1,11 +1,12 @@
-﻿@model OrderModel.AddOrderProductModel.ProductDetailsModel
+﻿@using Nop.Core.Domain.Catalog
+@model OrderModel.AddOrderProductModel.ProductDetailsModel
 @{
     //page title
     ViewBag.Title = string.Format(T("Admin.Orders.Products.AddNew.Title2").Text, Model.Name, Model.OrderId);
 }
 @*we add enctype = "multipart/form-data" because "File upload" attribute control type requries it*@
 @using (Html.BeginForm("AddProductToOrderDetails", "Order",
-    new RouteValueDictionary(new { orderId = Model.OrderId, productVariantId = Model.ProductVariantId }),
+    new RouteValueDictionary(new { orderId = Model.OrderId, productId = Model.ProductId }),
     FormMethod.Post,
     new Dictionary<string, Object> { { "enctype", "multipart/form-data" } }))
 {
@@ -31,6 +32,8 @@
             </div>
         }
     </div>
+        if (Model.ProductType == ProductType.SimpleProduct)
+        {
     <div>
         <table>
             <tr>
@@ -78,13 +81,27 @@
             @Html.Partial("_ProductAddAttributes", Model.ProductVariantAttributes)
         </div>
         @{
-        var dataDictGiftCard = new ViewDataDictionary();
-        dataDictGiftCard.TemplateInfo.HtmlFieldPrefix = "giftcard";
+            var dataDictGiftCard = new ViewDataDictionary();
+            dataDictGiftCard.TemplateInfo.HtmlFieldPrefix = "giftcard";
             @Html.Partial("_ProductAddGiftCardInfo", Model.GiftCard, dataDictGiftCard)
         }
         <p>
             <strong>@T("Admin.Orders.Products.AddNew.Note2")</strong>
         </p>
-        <input type="submit" class="t-button" value="@T("Admin.Orders.Products.AddNew")" />
+        <input type="submit" class="k-button" value="@T("Admin.Orders.Products.AddNew")" />
     </div>
+        }
+        else if (Model.ProductType == ProductType.GroupedProduct)
+        {
+    <div>
+        @*TODO add support for grouped products to be added to an existing order*@
+        Grouped products are not currently supported for adding to an existing order
+    </div>
+        }
+        else
+        {
+    <div>
+        This product type (unknown) is not currently supported for adding to an existing order
+    </div>
+        }
 }

@@ -1,13 +1,6 @@
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using Nop.Core;
-using Nop.Core.Caching;
-using Nop.Core.Data;
-using Nop.Core.Domain.Customers;
-using Nop.Core.Domain.Security;
 using Nop.Core.Domain.Stores;
-using Nop.Services.Security;
 
 namespace Nop.Services.Stores
 {
@@ -78,8 +71,8 @@ namespace Nop.Services.Stores
         /// </summary>
         /// <typeparam name="T">Type</typeparam>
         /// <param name="entity">Entity</param>
-        /// <param name="store">Store</param>
+        /// <param name="storeId">Store identifier</param>
         /// <returns>true - authorized; otherwise, false</returns>
-        bool Authorize<T>(T entity, Store store) where T : BaseEntity, IStoreMappingSupported;
+        bool Authorize<T>(T entity, int storeId) where T : BaseEntity, IStoreMappingSupported;
     }
 }

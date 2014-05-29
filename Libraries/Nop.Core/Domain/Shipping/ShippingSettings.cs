@@ -16,6 +16,12 @@ namespace Nop.Core.Domain.Shipping
         public List<string> ActiveShippingRateComputationMethodSystemNames { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether the system should use warehouse location when requesting shipping rates
+        /// This is useful when you ship from multiple warehouses
+        /// </summary>
+        public bool UseWarehouseLocation { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether 'Free shipping over X' is enabled
         /// </summary>
         public bool FreeShippingOverXEnabled { get; set; }
@@ -50,5 +56,15 @@ namespace Nop.Core.Domain.Shipping
         /// Gets or sets a value indicating whether we should return valid options if there are any (no matter of the errors returned by other shipping rate compuation methods).
         /// </summary>
         public bool ReturnValidOptionsIfThereAreAny { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether we should bypass 'select shipping method' page if we have only one shipping method
+        /// </summary>
+        public bool BypassShippingMethodSelectionIfOnlyOne { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether dimensions are calculated based on cube root of volume
+        /// </summary>
+        public bool UseCubeRootMethod { get; set; }
     }
 }

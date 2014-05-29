@@ -4,17 +4,13 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Routing;
 using System.Xml;
 using Nop.Core;
-using Nop.Core.Domain;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Directory;
-using Nop.Core.Domain.Media;
 using Nop.Core.Domain.Stores;
-using Nop.Core.Domain.Tasks;
 using Nop.Core.Plugins;
 using Nop.Plugin.Feed.Froogle.Data;
 using Nop.Plugin.Feed.Froogle.Services;
@@ -25,7 +21,6 @@ using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Seo;
-using Nop.Services.Tasks;
 
 namespace Nop.Plugin.Feed.Froogle
 {
@@ -127,25 +122,7 @@ namespace Nop.Plugin.Feed.Froogle
                 currency = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId);
             return currency;
         }
-
-        private IList<Category> GetCategoryBreadCrumb(Category category)
-        {
-            if (category == null)
-                throw new ArgumentNullException("category");
-
-            var breadCrumb = new List<Category>();
-
-            while (category != null && //category is not null
-                !category.Deleted && //category is not deleted
-                category.Published) //category is published
-            {
-                breadCrumb.Add(category);
-                category = _categoryService.GetCategoryById(category.ParentCategoryId);
-            }
-            breadCrumb.Reverse();
-            return breadCrumb;
-        }
-
+        
         #endregion
 
         #region Methods
@@ -195,23 +172,45 @@ namespace Nop.Plugin.Feed.Froogle
                 writer.WriteElementString("link", "http://base.google.com/base/");
                 writer.WriteElementString("description", "Information about products");
 
-                var products = _productService.SearchProducts(storeId: store.Id);
-                foreach (var product in products)
+                var products1 = _productService.SearchProducts(storeId: store.Id,
+                visibleIndividuallyOnly: true);
+                foreach (var product1 in products1)
                 {
-                    var productVariants = _productService.GetProductVariantsByProductId(product.Id);
-
-                    foreach (var productVariant in productVariants)
+                    var productsToProcess = new List<Product>();
+                    switch (product1.ProductType)
+                    {
+                        case ProductType.SimpleProduct:
+                            {
+                                //simple product doesn't have child products
+                                productsToProcess.Add(product1);
+                            }
+                            break;
+                        case ProductType.GroupedProduct:
+                            {
+                                //grouped products could have several child products
+                                var associatedProducts = _productService.SearchProducts(
+                                    storeId: store.Id,
+                                    visibleIndividuallyOnly: false,
+                                    parentGroupedProductId: product1.Id
+                                    );
+                                productsToProcess.AddRange(associatedProducts);
+                            }
+                            break;
+                        default:
+                            continue;
+                    }
+                    foreach (var product in productsToProcess)
                     {
                         writer.WriteStartElement("item");
 
                         #region Basic Product Information
 
                         //id [id]- An identifier of the item
-                        writer.WriteElementString("g", "id", googleBaseNamespace, productVariant.Id.ToString());
+                        writer.WriteElementString("g", "id", googleBaseNamespace, product.Id.ToString());
 
                         //title [title] - Title of the item
                         writer.WriteStartElement("title");
-                        var title = productVariant.FullProductName;
+                        var title = product.Name;
                         //title should be not longer than 70 characters
                         if (title.Length > 70)
                             title = title.Substring(0, 70);
@@ -220,15 +219,13 @@ namespace Nop.Plugin.Feed.Froogle
 
                         //description [description] - Description of the item
                         writer.WriteStartElement("description");
-                        string description = productVariant.Description;
-                        if (String.IsNullOrEmpty(description))
-                            description = product.FullDescription;
+                        string description = product.FullDescription;
                         if (String.IsNullOrEmpty(description))
                             description = product.ShortDescription;
                         if (String.IsNullOrEmpty(description))
                             description = product.Name;
                         if (String.IsNullOrEmpty(description))
-                            description = productVariant.FullProductName; //description is required
+                            description = product.Name; //description is required
                         //resolving character encoding issues in your data feed
                         description = StripInvalidChars(description, true);
                         writer.WriteCData(description);
@@ -239,7 +236,7 @@ namespace Nop.Plugin.Feed.Froogle
                         //google product category [google_product_category] - Google's category of the item
                         //the category of the product according to Google’s product taxonomy. http://www.google.com/support/merchants/bin/answer.py?answer=160081
                         string googleProductCategory = "";
-                        var googleProduct = _googleService.GetByProductVariantId(productVariant.Id);
+                        var googleProduct = _googleService.GetByProductId(product.Id);
                         if (googleProduct != null)
                             googleProductCategory = googleProduct.Taxonomy;
                         if (String.IsNullOrEmpty(googleProductCategory))
@@ -254,19 +251,11 @@ namespace Nop.Plugin.Feed.Froogle
                         var defaultProductCategory = _categoryService.GetProductCategoriesByProductId(product.Id).FirstOrDefault();
                         if (defaultProductCategory != null)
                         {
-                            var categoryBreadCrumb = GetCategoryBreadCrumb(defaultProductCategory.Category);
-                            string yourProductCategory = "";
-                            for (int i = 0; i < categoryBreadCrumb.Count; i++)
-                            {
-                                var cat = categoryBreadCrumb[i];
-                                yourProductCategory = yourProductCategory + cat.Name;
-                                if (i != categoryBreadCrumb.Count - 1)
-                                    yourProductCategory = yourProductCategory + " > ";
-                            }
-                            if (!String.IsNullOrEmpty((yourProductCategory)))
+                            var category = defaultProductCategory.Category.GetFormattedBreadCrumb(_categoryService, separator: ">");
+                            if (!String.IsNullOrEmpty((category)))
                             {
                                 writer.WriteStartElement("g", "product_type", googleBaseNamespace);
-                                writer.WriteCData(yourProductCategory);
+                                writer.WriteCData(category);
                                 writer.WriteFullEndElement(); // g:product_type
                             }
                         }
@@ -277,9 +266,7 @@ namespace Nop.Plugin.Feed.Froogle
 
                         //image link [image_link] - URL of an image of the item
                         string imageUrl;
-                        var picture = _pictureService.GetPictureById(productVariant.PictureId);
-                        if (picture == null)
-                            picture = _pictureService.GetPicturesByProductId(product.Id, 1).FirstOrDefault();
+                        var picture = _pictureService.GetPicturesByProductId(product.Id, 1).FirstOrDefault();
 
                         if (picture != null)
                             imageUrl = _pictureService.GetPictureUrl(picture, _froogleSettings.ProductPictureSize, storeLocation: store.Url);
@@ -291,16 +278,18 @@ namespace Nop.Plugin.Feed.Froogle
                         //condition [condition] - Condition or state of the item
                         writer.WriteElementString("g", "condition", googleBaseNamespace, "new");
 
+                        writer.WriteElementString("g", "expiration_date", googleBaseNamespace, DateTime.Now.AddDays(28).ToString("yyyy-MM-dd"));
+
                         #endregion
 
                         #region Availability & Price
 
                         //availability [availability] - Availability status of the item
                         string availability = "in stock"; //in stock by default
-                        if (productVariant.ManageInventoryMethod == ManageInventoryMethod.ManageStock
-                            && productVariant.StockQuantity <= 0)
+                        if (product.ManageInventoryMethod == ManageInventoryMethod.ManageStock
+                            && product.StockQuantity <= 0)
                         {
-                            switch (productVariant.BackorderMode)
+                            switch (product.BackorderMode)
                             {
                                 case BackorderMode.NoBackorders:
                                     {
@@ -322,7 +311,7 @@ namespace Nop.Plugin.Feed.Froogle
 
                         //price [price] - Price of the item
                         var currency = GetUsedCurrency();
-                        decimal price = _currencyService.ConvertFromPrimaryStoreCurrency(productVariant.Price, currency);
+                        decimal price = _currencyService.ConvertFromPrimaryStoreCurrency(product.Price, currency);
                         writer.WriteElementString("g", "price", googleBaseNamespace,
                                                   price.ToString(new CultureInfo("en-US", false).NumberFormat) + " " +
                                                   currency.CurrencyCode);
@@ -337,7 +326,7 @@ namespace Nop.Plugin.Feed.Froogle
                         */
 
                         //GTIN [gtin] - GTIN
-                        var gtin = productVariant.Gtin;
+                        var gtin = product.Gtin;
                         if (!String.IsNullOrEmpty(gtin))
                         {
                             writer.WriteStartElement("g", "gtin", googleBaseNamespace);
@@ -357,7 +346,7 @@ namespace Nop.Plugin.Feed.Froogle
 
 
                         //mpn [mpn] - Manufacturer Part Number (MPN) of the item
-                        var mpn = productVariant.ManufacturerPartNumber;
+                        var mpn = product.ManufacturerPartNumber;
                         if (!String.IsNullOrEmpty(mpn))
                         {
                             writer.WriteStartElement("g", "mpn", googleBaseNamespace);
@@ -404,23 +393,23 @@ namespace Nop.Plugin.Feed.Froogle
                             writer.WriteCData(googleProduct.Size);
                             writer.WriteFullEndElement(); // g:size
                         }
-                        
+
                         #endregion
 
                         #region Tax & Shipping
-                        
+
                         //tax [tax]
                         //The tax attribute is an item-level override for merchant-level tax settings as defined in your Google Merchant Center account. This attribute is only accepted in the US, if your feed targets a country outside of the US, please do not use this attribute.
                         //IMPORTANT NOTE: Set tax in your Google Merchant Center account settings
 
                         //IMPORTANT NOTE: Set shipping in your Google Merchant Center account settings
-                        
+
                         //shipping weight [shipping_weight] - Weight of the item for shipping
                         //We accept only the following units of weight: lb, oz, g, kg.
                         if (_froogleSettings.PassShippingInfo)
                         {
                             var weightName = "kg";
-                            var shippingWeight = productVariant.Weight;
+                            var shippingWeight = product.Weight;
                             switch (_measureService.GetMeasureWeightById(_measureSettings.BaseWeightId).SystemKeyword)
                             {
                                 case "ounce":
@@ -444,9 +433,6 @@ namespace Nop.Plugin.Feed.Froogle
                         }
 
                         #endregion
-                        
-                        writer.WriteElementString("g", "expiration_date", googleBaseNamespace, DateTime.Now.AddDays(28).ToString("yyyy-MM-dd"));
-                        
 
                         writer.WriteEndElement(); // item
                     }
@@ -481,7 +467,7 @@ namespace Nop.Plugin.Feed.Froogle
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Currency", "Currency");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Currency.Hint", "Select the default currency that will be used to generate the feed.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.DefaultGoogleCategory", "Default Google category");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.DefaultGoogleCategory.Hint", "The default Google category will be useds if other one is not specified.");
+            this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.DefaultGoogleCategory.Hint", "The default Google category to use if one is not specified.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.General", "General");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Generate", "Generate feed");
             this.AddOrUpdatePluginLocaleResource("Plugins.Feed.Froogle.Override", "Override product settings");

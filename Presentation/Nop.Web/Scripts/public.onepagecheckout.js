@@ -6,12 +6,10 @@
 var Checkout = {
     loadWaiting: false,
     failureUrl: false,
-    steps: new Array(),
 
     init: function (failureUrl) {
         this.loadWaiting = false;
         this.failureUrl = failureUrl;
-        this.steps = ['billing', 'shipping', 'shipping_method', 'payment_method', 'payment_info', 'confirm_order'];
 
         Accordion.disallowAccessToNextSections = true;
     },
@@ -110,10 +108,12 @@ var Checkout = {
 var Billing = {
     form: false,
     saveUrl: false,
+    disableBillingAddressCheckoutStep: false,
 
-    init: function (form, saveUrl) {
+    init: function (form, saveUrl, disableBillingAddressCheckoutStep) {
         this.form = form;
         this.saveUrl = saveUrl;
+        this.disableBillingAddressCheckoutStep = disableBillingAddressCheckoutStep;
     },
 
     newAddress: function (isNew) {
@@ -153,6 +153,20 @@ var Billing = {
     },
 
     nextStep: function (response) {
+        //ensure that response.wrong_billing_address is set
+        //if not set, "true" is the default value
+        if (typeof response.wrong_billing_address == 'undefined') {
+            response.wrong_billing_address = false;
+        }
+        if (Billing.disableBillingAddressCheckoutStep) {
+            if (response.wrong_billing_address) {
+                Accordion.showSection('#opc-billing');
+            } else {
+                Accordion.hideSection('#opc-billing');
+            }
+        }
+
+
         if (response.error) {
             if ((typeof response.message) == 'string') {
                 alert(response.message);
@@ -416,15 +430,30 @@ var ConfirmOrder = {
     save: function () {
         if (Checkout.loadWaiting != false) return;
         
-        Checkout.setLoadWaiting('confirm-order');
-        $.ajax({
-            cache: false,
-            url: this.saveUrl,
-            type: 'post',
-            success: this.nextStep,
-            complete: this.resetLoadWaiting,
-            error: Checkout.ajaxFailure
-        });
+        //terms of service
+        var termOfServiceOk = true;
+        if ($('#termsofservice').length > 0) {
+            //terms of service element exists
+            if (!$('#termsofservice').is(':checked')) {
+                $("#terms-of-service-warning-box").dialog();
+                termOfServiceOk = false;
+            } else {
+                termOfServiceOk = true;
+            }
+        }
+        if (termOfServiceOk) {
+            Checkout.setLoadWaiting('confirm-order');
+            $.ajax({
+                cache: false,
+                url: this.saveUrl,
+                type: 'post',
+                success: this.nextStep,
+                complete: this.resetLoadWaiting,
+                error: Checkout.ajaxFailure
+            });
+        } else {
+            return false;
+        }
     },
     
     resetLoadWaiting: function (transport) {

@@ -12,6 +12,7 @@ using Nop.Services.Directory;
 using Nop.Services.Events;
 using Nop.Services.Media;
 using Nop.Services.Orders;
+using Nop.Services.Stores;
 using Nop.Services.Tax;
 using Nop.Tests;
 using NUnit.Framework;
@@ -22,22 +23,22 @@ namespace Nop.Services.Tests.Orders
     [TestFixture]
     public class CheckoutAttributeParserAndFormatterTests : ServiceTest
     {
-        IRepository<CheckoutAttribute> _checkoutAttributeRepo;
-        IRepository<CheckoutAttributeValue> _checkoutAttributeValueRepo;
-        IEventPublisher _eventPublisher;
-        ICheckoutAttributeService _checkoutAttributeService;
-        ICheckoutAttributeParser _checkoutAttributeParser;
+        private IRepository<CheckoutAttribute> _checkoutAttributeRepo;
+        private IRepository<CheckoutAttributeValue> _checkoutAttributeValueRepo;
+        private IEventPublisher _eventPublisher;
+        private IStoreMappingService _storeMappingService;
+        private ICheckoutAttributeService _checkoutAttributeService;
+        private ICheckoutAttributeParser _checkoutAttributeParser;
+        private IWorkContext _workContext;
+        private ICurrencyService _currencyService;
+        private ITaxService _taxService;
+        private IPriceFormatter _priceFormatter;
+        private IDownloadService _downloadService;
+        private IWebHelper _webHelper;
+        private ICheckoutAttributeFormatter _checkoutAttributeFormatter;
 
-        IWorkContext _workContext;
-        ICurrencyService _currencyService;
-        ITaxService _taxService;
-        IPriceFormatter _priceFormatter;
-        IDownloadService _downloadService;
-        IWebHelper _webHelper;
-        ICheckoutAttributeFormatter _checkoutAttributeFormatter;
-
-        CheckoutAttribute ca1, ca2, ca3;
-        CheckoutAttributeValue cav1_1, cav1_2, cav2_1, cav2_2;
+        private CheckoutAttribute ca1, ca2, ca3;
+        private CheckoutAttributeValue cav1_1, cav1_2, cav2_1, cav2_2;
         
         [SetUp]
         public new void SetUp()
@@ -131,12 +132,15 @@ namespace Nop.Services.Tests.Orders
 
             var cacheManager = new NopNullCache();
 
+            _storeMappingService = MockRepository.GenerateMock<IStoreMappingService>();
+
             _eventPublisher = MockRepository.GenerateMock<IEventPublisher>();
             _eventPublisher.Expect(x => x.Publish(Arg<object>.Is.Anything));
 
             _checkoutAttributeService = new CheckoutAttributeService(cacheManager,
                 _checkoutAttributeRepo,
                 _checkoutAttributeValueRepo,
+                _storeMappingService,
                 _eventPublisher);
 
             _checkoutAttributeParser = new CheckoutAttributeParser(_checkoutAttributeService);

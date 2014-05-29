@@ -56,12 +56,14 @@
         if ($('#@Html.FieldIdFor(model => model.EuVatEnabled)').is(':checked')) {
             $('#pnlEuVatShopCountry').show();
             $('#pnlEuVatAllowVATExemption').show();
+            $('#pnlEuVatAssumeValid').show();
             $('#pnlEuVatUseWebService').show();
             $('#pnlEuVatEmailAdminWhenNewVATSubmitted').show();
         }
         else {
             $('#pnlEuVatShopCountry').hide();
             $('#pnlEuVatAllowVATExemption').hide();
+            $('#pnlEuVatAssumeValid').hide();
             $('#pnlEuVatUseWebService').hide();
             $('#pnlEuVatEmailAdminWhenNewVATSubmitted').hide();
         }
@@ -74,7 +76,7 @@
             @T("Admin.Configuration.Settings.Tax")
         </div>
         <div class="options">
-            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
+            <input type="submit" name="save" class="k-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
     @Html.Action("StoreScopeConfiguration", "Setting")
@@ -148,6 +150,16 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.HideTaxInOrderSummary)
                 @Html.ValidationMessageFor(model => model.HideTaxInOrderSummary)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.ForceTaxExclusionFromOrderSubtotal_OverrideForStore, model => model.ForceTaxExclusionFromOrderSubtotal, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.ForceTaxExclusionFromOrderSubtotal):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ForceTaxExclusionFromOrderSubtotal)
+                @Html.ValidationMessageFor(model => model.ForceTaxExclusionFromOrderSubtotal)
             </td>
         </tr>
         <tr class="adminSeparator">
@@ -279,6 +291,16 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.EuVatAllowVatExemption)
                 @Html.ValidationMessageFor(model => model.EuVatAllowVatExemption)
+            </td>
+        </tr>
+        <tr id="pnlEuVatAssumeValid">
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.EuVatAssumeValid_OverrideForStore, model => model.EuVatAssumeValid, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.EuVatAssumeValid):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.EuVatAssumeValid)
+                @Html.ValidationMessageFor(model => model.EuVatAssumeValid)
             </td>
         </tr>
         <tr id="pnlEuVatUseWebService">

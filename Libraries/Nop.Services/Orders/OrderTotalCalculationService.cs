@@ -96,35 +96,120 @@ namespace Nop.Services.Orders
         }
 
         #endregion
-        
-        #region Methods
+
+        #region Utilities
 
         /// <summary>
-        /// Gets shopping cart subtotal
+        /// Gets an order discount (applied to order subtotal)
         /// </summary>
-        /// <param name="cart">Cart</param>
-        /// <param name="discountAmount">Applied discount amount</param>
+        /// <param name="customer">Customer</param>
+        /// <param name="orderSubTotal">Order subtotal</param>
         /// <param name="appliedDiscount">Applied discount</param>
-        /// <param name="subTotalWithoutDiscount">Sub total (without discount)</param>
-        /// <param name="subTotalWithDiscount">Sub total (with discount)</param>
-        public virtual void GetShoppingCartSubTotal(IList<ShoppingCartItem> cart,
-            out decimal discountAmount, out Discount appliedDiscount,
-            out decimal subTotalWithoutDiscount, out decimal subTotalWithDiscount)
+        /// <returns>Order discount</returns>
+        protected virtual decimal GetOrderSubtotalDiscount(Customer customer,
+            decimal orderSubTotal, out Discount appliedDiscount)
         {
-            bool includingTax = false;
-            switch (_workContext.TaxDisplayType)
-            {
-                case TaxDisplayType.ExcludingTax:
-                    includingTax = false;
-                    break;
-                case TaxDisplayType.IncludingTax:
-                    includingTax = true;
-                    break;
-            }
-            GetShoppingCartSubTotal(cart, includingTax,
-                out discountAmount, out appliedDiscount,
-                out subTotalWithoutDiscount, out subTotalWithDiscount);
+            appliedDiscount = null;
+            decimal discountAmount = decimal.Zero;
+            if (_catalogSettings.IgnoreDiscounts)
+                return discountAmount;
+
+            var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToOrderSubTotal);
+            var allowedDiscounts = new List<Discount>();
+            if (allDiscounts != null)
+                foreach (var discount in allDiscounts)
+                    if (_discountService.IsDiscountValid(discount, customer) &&
+                               discount.DiscountType == DiscountType.AssignedToOrderSubTotal &&
+                               !allowedDiscounts.ContainsDiscount(discount))
+                        allowedDiscounts.Add(discount);
+
+            appliedDiscount = allowedDiscounts.GetPreferredDiscount(orderSubTotal);
+            if (appliedDiscount != null)
+                discountAmount = appliedDiscount.GetDiscountAmount(orderSubTotal);
+
+            if (discountAmount < decimal.Zero)
+                discountAmount = decimal.Zero;
+
+            return discountAmount;
         }
+
+        /// <summary>
+        /// Gets a shipping discount
+        /// </summary>
+        /// <param name="customer">Customer</param>
+        /// <param name="shippingTotal">Shipping total</param>
+        /// <param name="appliedDiscount">Applied discount</param>
+        /// <returns>Shipping discount</returns>
+        protected virtual decimal GetShippingDiscount(Customer customer, decimal shippingTotal, out Discount appliedDiscount)
+        {
+            appliedDiscount = null;
+            decimal shippingDiscountAmount = decimal.Zero;
+            if (_catalogSettings.IgnoreDiscounts)
+                return shippingDiscountAmount;
+
+            var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToShipping);
+            var allowedDiscounts = new List<Discount>();
+            if (allDiscounts != null)
+                foreach (var discount in allDiscounts)
+                    if (_discountService.IsDiscountValid(discount, customer) &&
+                               discount.DiscountType == DiscountType.AssignedToShipping &&
+                               !allowedDiscounts.ContainsDiscount(discount))
+                        allowedDiscounts.Add(discount);
+
+            appliedDiscount = allowedDiscounts.GetPreferredDiscount(shippingTotal);
+            if (appliedDiscount != null)
+            {
+                shippingDiscountAmount = appliedDiscount.GetDiscountAmount(shippingTotal);
+            }
+
+            if (shippingDiscountAmount < decimal.Zero)
+                shippingDiscountAmount = decimal.Zero;
+
+            if (_shoppingCartSettings.RoundPricesDuringCalculation)
+                shippingDiscountAmount = Math.Round(shippingDiscountAmount, 2);
+
+            return shippingDiscountAmount;
+        }
+
+        /// <summary>
+        /// Gets an order discount (applied to order total)
+        /// </summary>
+        /// <param name="customer">Customer</param>
+        /// <param name="orderTotal">Order total</param>
+        /// <param name="appliedDiscount">Applied discount</param>
+        /// <returns>Order discount</returns>
+        protected virtual decimal GetOrderTotalDiscount(Customer customer, decimal orderTotal, out Discount appliedDiscount)
+        {
+            appliedDiscount = null;
+            decimal discountAmount = decimal.Zero;
+            if (_catalogSettings.IgnoreDiscounts)
+                return discountAmount;
+
+            var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToOrderTotal);
+            var allowedDiscounts = new List<Discount>();
+            if (allDiscounts != null)
+                foreach (var discount in allDiscounts)
+                    if (_discountService.IsDiscountValid(discount, customer) &&
+                               discount.DiscountType == DiscountType.AssignedToOrderTotal &&
+                               !allowedDiscounts.ContainsDiscount(discount))
+                        allowedDiscounts.Add(discount);
+
+            appliedDiscount = allowedDiscounts.GetPreferredDiscount(orderTotal);
+            if (appliedDiscount != null)
+                discountAmount = appliedDiscount.GetDiscountAmount(orderTotal);
+
+            if (discountAmount < decimal.Zero)
+                discountAmount = decimal.Zero;
+
+            if (_shoppingCartSettings.RoundPricesDuringCalculation)
+                discountAmount = Math.Round(discountAmount, 2);
+
+            return discountAmount;
+        }
+        
+        #endregion
+
+        #region Methods
 
         /// <summary>
         /// Gets shopping cart subtotal
@@ -182,8 +267,8 @@ namespace Nop.Services.Orders
                 decimal taxRate = decimal.Zero;
                 decimal sciSubTotal = _priceCalculationService.GetSubTotal(shoppingCartItem, true);
 
-                decimal sciExclTax = _taxService.GetProductPrice(shoppingCartItem.ProductVariant, sciSubTotal, false, customer, out taxRate);
-                decimal sciInclTax = _taxService.GetProductPrice(shoppingCartItem.ProductVariant, sciSubTotal, true, customer, out taxRate);
+                decimal sciExclTax = _taxService.GetProductPrice(shoppingCartItem.Product, sciSubTotal, false, customer, out taxRate);
+                decimal sciInclTax = _taxService.GetProductPrice(shoppingCartItem.Product, sciSubTotal, true, customer, out taxRate);
                 subTotalExclTaxWithoutDiscount += sciExclTax;
                 subTotalInclTaxWithoutDiscount += sciInclTax;
                 
@@ -205,7 +290,7 @@ namespace Nop.Services.Orders
             //checkout attributes
             if (customer != null)
             {
-                var checkoutAttributesXml = customer.GetAttribute<string>(SystemCustomerAttributeNames.CheckoutAttributes, _genericAttributeService);
+                var checkoutAttributesXml = customer.GetAttribute<string>(SystemCustomerAttributeNames.CheckoutAttributes, _genericAttributeService, _storeContext.CurrentStore.Id);
                 var caValues = _checkoutAttributeParser.ParseCheckoutAttributeValues(checkoutAttributesXml);
                 if (caValues!=null)
                 {
@@ -282,7 +367,10 @@ namespace Nop.Services.Orders
             }
 
             if (_shoppingCartSettings.RoundPricesDuringCalculation)
+            {
                 discountAmountInclTax = Math.Round(discountAmountInclTax, 2);
+                discountAmountExclTax = Math.Round(discountAmountExclTax, 2);
+            }
 
             if (includingTax)
             {
@@ -295,46 +383,11 @@ namespace Nop.Services.Orders
                 discountAmount = discountAmountExclTax;
             }
 
-            //round
             if (subTotalWithDiscount < decimal.Zero)
                 subTotalWithDiscount = decimal.Zero;
 
             if (_shoppingCartSettings.RoundPricesDuringCalculation)
                 subTotalWithDiscount = Math.Round(subTotalWithDiscount, 2);
-        }
-
-        /// <summary>
-        /// Gets an order discount (applied to order subtotal)
-        /// </summary>
-        /// <param name="customer">Customer</param>
-        /// <param name="orderSubTotal">Order subtotal</param>
-        /// <param name="appliedDiscount">Applied discount</param>
-        /// <returns>Order discount</returns>
-        public virtual decimal GetOrderSubtotalDiscount(Customer customer,
-            decimal orderSubTotal, out Discount appliedDiscount)
-        {
-            appliedDiscount = null;
-            decimal discountAmount = decimal.Zero;
-            if (_catalogSettings.IgnoreDiscounts)
-                return discountAmount;
-
-            var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToOrderSubTotal);
-            var allowedDiscounts = new List<Discount>();
-            if (allDiscounts != null)
-                foreach (var discount in allDiscounts)
-                    if (_discountService.IsDiscountValid(discount, customer) &&
-                               discount.DiscountType == DiscountType.AssignedToOrderSubTotal &&
-                               !allowedDiscounts.ContainsDiscount(discount))
-                        allowedDiscounts.Add(discount);
-
-            appliedDiscount = allowedDiscounts.GetPreferredDiscount(orderSubTotal);
-            if (appliedDiscount != null)
-                discountAmount = appliedDiscount.GetDiscountAmount(orderSubTotal);
-
-            if (discountAmount < decimal.Zero)
-                discountAmount = decimal.Zero;
-
-            return discountAmount;
         }
 
 
@@ -455,16 +508,7 @@ namespace Nop.Services.Orders
         /// <returns>Shipping total</returns>
         public virtual decimal? GetShoppingCartShippingTotal(IList<ShoppingCartItem> cart)
         {
-            bool includingTax = false;
-            switch (_workContext.TaxDisplayType)
-            {
-                case TaxDisplayType.ExcludingTax:
-                    includingTax = false;
-                    break;
-                case TaxDisplayType.IncludingTax:
-                    includingTax = true;
-                    break;
-            }
+            bool includingTax = _workContext.TaxDisplayType == TaxDisplayType.IncludingTax;
             return GetShoppingCartShippingTotal(cart, includingTax);
         }
 
@@ -534,16 +578,29 @@ namespace Nop.Services.Orders
                 if (customer != null)
                     shippingAddress = customer.ShippingAddress;
 
-                var shippingRateComputationMethods = _shippingService.LoadActiveShippingRateComputationMethods();
+                var shippingRateComputationMethods = _shippingService.LoadActiveShippingRateComputationMethods(_storeContext.CurrentStore.Id);
                 if (shippingRateComputationMethods == null || shippingRateComputationMethods.Count == 0)
                     throw new NopException("Shipping rate computation method could not be loaded");
 
                 if (shippingRateComputationMethods.Count == 1)
                 {
-                    var getShippingOptionRequest = _shippingService.CreateShippingOptionRequest(cart, shippingAddress);
-
                     var shippingRateComputationMethod = shippingRateComputationMethods[0];
-                    decimal? fixedRate = shippingRateComputationMethod.GetFixedRate(getShippingOptionRequest);
+
+                    var shippingOptionRequests = _shippingService.CreateShippingOptionRequests(cart, shippingAddress);
+                    decimal? fixedRate = null;
+                    foreach (var shippingOptionRequest in shippingOptionRequests)
+                    {
+                        //calculate fixed rates for each request-package
+                        var fixedRateTmp = shippingRateComputationMethod.GetFixedRate(shippingOptionRequest);
+                        if (fixedRateTmp.HasValue)
+                        {
+                            if (!fixedRate.HasValue)
+                                fixedRate = decimal.Zero;
+
+                            fixedRate += fixedRateTmp.Value;
+                        }
+                    }
+                    
                     if (fixedRate.HasValue)
                     {
                         //adjust shipping rate
@@ -573,45 +630,6 @@ namespace Nop.Services.Orders
 
             return shippingTotalTaxed;
         }
-
-        /// <summary>
-        /// Gets a shipping discount
-        /// </summary>
-        /// <param name="customer">Customer</param>
-        /// <param name="shippingTotal">Shipping total</param>
-        /// <param name="appliedDiscount">Applied discount</param>
-        /// <returns>Shipping discount</returns>
-        public virtual decimal GetShippingDiscount(Customer customer, decimal shippingTotal, out Discount appliedDiscount)
-        {
-            appliedDiscount = null;
-            decimal shippingDiscountAmount = decimal.Zero;
-            if (_catalogSettings.IgnoreDiscounts)
-                return shippingDiscountAmount;
-
-            var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToShipping);
-            var allowedDiscounts = new List<Discount>();
-            if (allDiscounts != null)
-            foreach (var discount in allDiscounts)
-                if (_discountService.IsDiscountValid(discount, customer) &&
-                           discount.DiscountType == DiscountType.AssignedToShipping &&
-                           !allowedDiscounts.ContainsDiscount(discount))
-                    allowedDiscounts.Add(discount);
-
-            appliedDiscount = allowedDiscounts.GetPreferredDiscount(shippingTotal);
-            if (appliedDiscount != null)
-            {
-                shippingDiscountAmount = appliedDiscount.GetDiscountAmount(shippingTotal);
-            }
-
-            if (shippingDiscountAmount < decimal.Zero)
-                shippingDiscountAmount = decimal.Zero;
-            
-            if (_shoppingCartSettings.RoundPricesDuringCalculation) 
-                shippingDiscountAmount = Math.Round(shippingDiscountAmount, 2);
-
-            return shippingDiscountAmount;
-        }
-        
 
 
 
@@ -664,7 +682,7 @@ namespace Nop.Services.Orders
             decimal subTotalWithoutDiscountBase = decimal.Zero;
             decimal subTotalWithDiscountBase = decimal.Zero;
             SortedDictionary<decimal, decimal> orderSubTotalTaxRates = null;
-            GetShoppingCartSubTotal(cart,  false, 
+            GetShoppingCartSubTotal(cart, false, 
                 out orderSubTotalDiscountAmount, out orderSubTotalAppliedDiscount,
                 out subTotalWithoutDiscountBase, out subTotalWithDiscountBase,
                 out orderSubTotalTaxRates);
@@ -958,42 +976,6 @@ namespace Nop.Services.Orders
             }
             else
                 return null;
-        }
-
-        /// <summary>
-        /// Gets an order discount (applied to order total)
-        /// </summary>
-        /// <param name="customer">Customer</param>
-        /// <param name="orderTotal">Order total</param>
-        /// <param name="appliedDiscount">Applied discount</param>
-        /// <returns>Order discount</returns>
-        public virtual decimal GetOrderTotalDiscount(Customer customer, decimal orderTotal, out Discount appliedDiscount)
-        {
-            appliedDiscount = null;
-            decimal discountAmount = decimal.Zero;
-            if (_catalogSettings.IgnoreDiscounts)
-                return discountAmount;
-
-            var allDiscounts = _discountService.GetAllDiscounts(DiscountType.AssignedToOrderTotal);
-            var allowedDiscounts = new List<Discount>();
-            if (allDiscounts!=null)
-                foreach (var discount in allDiscounts)
-                    if (_discountService.IsDiscountValid(discount, customer) &&
-                               discount.DiscountType == DiscountType.AssignedToOrderTotal &&
-                               !allowedDiscounts.ContainsDiscount(discount))
-                        allowedDiscounts.Add(discount);
-
-            appliedDiscount = allowedDiscounts.GetPreferredDiscount(orderTotal);
-            if (appliedDiscount != null)
-                discountAmount = appliedDiscount.GetDiscountAmount(orderTotal);
-
-            if (discountAmount < decimal.Zero)
-                discountAmount = decimal.Zero;
-
-            if (_shoppingCartSettings.RoundPricesDuringCalculation) 
-                discountAmount = Math.Round(discountAmount, 2);
-
-            return discountAmount;
         }
 
 

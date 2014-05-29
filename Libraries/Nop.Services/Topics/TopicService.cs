@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Nop.Core.Data;
+using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Stores;
 using Nop.Core.Domain.Topics;
 using Nop.Services.Events;
@@ -17,6 +18,7 @@ namespace Nop.Services.Topics
 
         private readonly IRepository<Topic> _topicRepository;
         private readonly IRepository<StoreMapping> _storeMappingRepository;
+        private readonly CatalogSettings _catalogSettings;
         private readonly IEventPublisher _eventPublisher;
 
         #endregion
@@ -25,10 +27,12 @@ namespace Nop.Services.Topics
 
         public TopicService(IRepository<Topic> topicRepository, 
             IRepository<StoreMapping> storeMappingRepository,
+            CatalogSettings catalogSettings,
             IEventPublisher eventPublisher)
         {
             this._topicRepository = topicRepository;
             this._storeMappingRepository = storeMappingRepository;
+            this._catalogSettings = catalogSettings;
             this._eventPublisher = eventPublisher;
         }
 
@@ -68,9 +72,8 @@ namespace Nop.Services.Topics
         /// Gets a topic
         /// </summary>
         /// <param name="systemName">The topic system name</param>
-        /// <param name="storeId">Store identifier</param>
         /// <returns>Topic</returns>
-        public virtual Topic GetTopicBySystemName(string systemName, int storeId)
+        public virtual Topic GetTopicBySystemName(string systemName)
         {
             if (String.IsNullOrEmpty(systemName))
                 return null;
@@ -78,20 +81,6 @@ namespace Nop.Services.Topics
             var query = _topicRepository.Table;
             query = query.Where(t => t.SystemName == systemName);
             query = query.OrderBy(t => t.Id);
-
-            //Store mapping
-            if (storeId > 0)
-            {
-                query = from t in query
-                        join sm in _storeMappingRepository.Table on t.Id equals sm.EntityId into t_sm
-                        from sm in t_sm.DefaultIfEmpty()
-                        where !t.LimitedToStores || (sm.EntityName == "Topic" && storeId == sm.StoreId)
-                        select t;
-
-				query = query.Distinct();
-				query = query.OrderBy(t => t.Id);
-            }
-
             return query.FirstOrDefault();
         }
 
@@ -106,12 +95,13 @@ namespace Nop.Services.Topics
             query = query.OrderBy(t => t.SystemName);
 
             //Store mapping
-            if (storeId > 0)
+            if (storeId > 0 && !_catalogSettings.IgnoreStoreLimitations)
             {
                 query = from t in query
-                        join sm in _storeMappingRepository.Table on t.Id equals sm.EntityId into t_sm
+                        join sm in _storeMappingRepository.Table
+                        on new { c1 = t.Id, c2 = "Topic" } equals new { c1 = sm.EntityId, c2 = sm.EntityName } into t_sm
                         from sm in t_sm.DefaultIfEmpty()
-                        where !t.LimitedToStores || (sm.EntityName == "Topic" && storeId == sm.StoreId)
+                        where !t.LimitedToStores || storeId == sm.StoreId
                         select t;
 
 				query = query.Distinct();

@@ -11,9 +11,9 @@ namespace Nop.Core.Domain.Catalog
         private ICollection<ProductVariantAttributeValue> _productVariantAttributeValues;
 
         /// <summary>
-        /// Gets or sets the product variant identifier
+        /// Gets or sets the product identifier
         /// </summary>
-        public int ProductVariantId { get; set; }
+        public int ProductId { get; set; }
 
         /// <summary>
         /// Gets or sets the product attribute identifier
@@ -40,6 +40,33 @@ namespace Nop.Core.Domain.Catalog
         /// </summary>
         public int DisplayOrder { get; set; }
 
+        //validation fields
+
+        /// <summary>
+        /// Gets or sets the validation rule for minimum length (for textbox and multiline textbox)
+        /// </summary>
+        public int? ValidationMinLength { get; set; }
+
+        /// <summary>
+        /// Gets or sets the validation rule for maximum length (for textbox and multiline textbox)
+        /// </summary>
+        public int? ValidationMaxLength { get; set; }
+
+        /// <summary>
+        /// Gets or sets the validation rule for file allowed extensions (for file upload)
+        /// </summary>
+        public string ValidationFileAllowedExtensions { get; set; }
+
+        /// <summary>
+        /// Gets or sets the validation rule for file maximum size in kilobytes (for file upload)
+        /// </summary>
+        public int? ValidationFileMaximumSize { get; set; }
+
+
+
+
+
+
         /// <summary>
         /// Gets the attribute control type
         /// </summary>
@@ -61,9 +88,9 @@ namespace Nop.Core.Domain.Catalog
         public virtual ProductAttribute ProductAttribute { get; set; }
 
         /// <summary>
-        /// Gets the product variant
+        /// Gets the product
         /// </summary>
-        public virtual ProductVariant ProductVariant { get; set; }
+        public virtual Product Product { get; set; }
         
         /// <summary>
         /// Gets the product variant attribute values

@@ -28,7 +28,7 @@
                     <li>
                         <div class="cart-item-row">
                             <div class="product">
-                                <a href="@Url.RouteUrl("Product", new { SeName = item.ProductSeName })" title="View details">@item.ProductName</a>
+                                <a href="@Url.RouteUrl("Product", new { SeName = item.ProductSeName })">@item.ProductName</a>
                                 @if (!String.IsNullOrEmpty(item.AttributeInfo))
                                 {
                                     <div class="attributes">
@@ -119,9 +119,7 @@
             {
                 <div class="common-buttons">
                     <input type="submit" name="continueshopping" value="@T("ShoppingCart.ContinueShopping")" />
-                    <div style="display: none;">
-                        <input type="submit" name="startcheckout" value="startcheckout" id="startcheckout" />
-                    </div>
+
                 </div>
                 @Html.Partial("_CheckoutAttributes", Model.CheckoutAttributes, new ViewDataDictionary())
             }
@@ -152,7 +150,7 @@
                 @Html.Action("OrderTotals", "ShoppingCart", new { isEditable = Model.IsEditable })
                 @if (Model.IsEditable)
                 {
-                    if (Model.TermsOfServiceEnabled)
+                    if (Model.TermsOfServiceOnShoppingCartPage)
                     {
                     <div class="terms-of-service">
                         <input id="termsofservice" type="checkbox" name="termsofservice" />
@@ -165,38 +163,31 @@
                             <script type="text/javascript">
                                 $(document).ready(function () {
                                     $('#checkout').click(function () {
-                                        //terms of services
+
+                                        //terms of service
                                         var termOfServiceOk = true;
-                                        @if (Model.TermsOfServiceEnabled)
-                                        {
-                                                <text>
-                                        if (!$('#termsofservice').is(':checked')) {
-                                            alert('@Html.Raw(HttpUtility.JavaScriptStringEncode(T("Checkout.TermsOfService.PleaseAccept").Text))');
-                                            termOfServiceOk = false;
+                                        if ($('#termsofservice').length > 0) {
+                                            //terms of service element exists
+                                            if (!$('#termsofservice').is(':checked')) {
+                                                alert('@Html.Raw(HttpUtility.JavaScriptStringEncode(T("Checkout.TermsOfService.PleaseAccept").Text))');
+                                                termOfServiceOk = false;
+                                            } else {
+                                                termOfServiceOk = true;
+                                            }
                                         }
-                                        else {
-                                            termOfServiceOk = true;
-                                        }
-                                                </text>
-                                        }
-                                        if (termOfServiceOk) {
-                                            $('#startcheckout').trigger("click");
-                                        }
+                                        return termOfServiceOk;
                                     });
                                 });
                             </script>
-                            <input type="submit" name="checkout" value="@T("Checkout.Button")" id="checkout" />
+                            <button type="submit"  id="checkout" name="checkout" value="checkout">@T("Checkout.Button")</button>
                         }
+                    </div>
+                    <div class="addon-buttons">
+                        @*Payment method buttons (e.g. GoogleCheckoutButton, Paypal Express)*@
+                        @Html.Partial("_ButtonPaymentMethod", Model)
                     </div>
                 }
             </div>
-        </div>
-        }
-        if (Model.IsEditable)
-        {
-        <div class="addon-buttons">
-            @*Payment method buttons (e.g. GoogleCheckoutButton, Paypal Express)*@
-            @Html.Partial("_ButtonPaymentMethod", Model)
         </div>
         }
     }

@@ -13,8 +13,9 @@ namespace Nop.Services.Shipping
         /// <summary>
         /// Load active shipping rate computation methods
         /// </summary>
+        /// <param name="storeId">Load records allowed only in a specified store; pass 0 to load all records</param>
         /// <returns>Shipping rate computation methods</returns>
-        IList<IShippingRateComputationMethod> LoadActiveShippingRateComputationMethods();
+        IList<IShippingRateComputationMethod> LoadActiveShippingRateComputationMethods(int storeId = 0);
 
         /// <summary>
         /// Load shipping rate computation method by system name
@@ -26,8 +27,11 @@ namespace Nop.Services.Shipping
         /// <summary>
         /// Load all shipping rate computation methods
         /// </summary>
+        /// <param name="storeId">Load records allowed only in a specified store; pass 0 to load all records</param>
         /// <returns>Shipping rate computation methods</returns>
-        IList<IShippingRateComputationMethod> LoadAllShippingRateComputationMethods();
+        IList<IShippingRateComputationMethod> LoadAllShippingRateComputationMethods(int storeId = 0);
+
+
 
 
 
@@ -67,6 +71,71 @@ namespace Nop.Services.Shipping
 
 
 
+        /// <summary>
+        /// Deletes a delivery date
+        /// </summary>
+        /// <param name="deliveryDate">The delivery date</param>
+        void DeleteDeliveryDate(DeliveryDate deliveryDate);
+
+        /// <summary>
+        /// Gets a delivery date
+        /// </summary>
+        /// <param name="deliveryDateId">The delivery date identifier</param>
+        /// <returns>Delivery date</returns>
+        DeliveryDate GetDeliveryDateById(int deliveryDateId);
+
+        /// <summary>
+        /// Gets all delivery dates
+        /// </summary>
+        /// <returns>Delivery dates</returns>
+        IList<DeliveryDate> GetAllDeliveryDates();
+
+        /// <summary>
+        /// Inserts a delivery date
+        /// </summary>
+        /// <param name="deliveryDate">Delivery date</param>
+        void InsertDeliveryDate(DeliveryDate deliveryDate);
+
+        /// <summary>
+        /// Updates the delivery date
+        /// </summary>
+        /// <param name="deliveryDate">Delivery date</param>
+        void UpdateDeliveryDate(DeliveryDate deliveryDate);
+
+        
+        /// <summary>
+        /// Deletes a warehouse
+        /// </summary>
+        /// <param name="warehouse">The warehouse</param>
+        void DeleteWarehouse(Warehouse warehouse);
+
+        /// <summary>
+        /// Gets a warehouse
+        /// </summary>
+        /// <param name="warehouseId">The warehouse identifier</param>
+        /// <returns>Warehouse</returns>
+        Warehouse GetWarehouseById(int warehouseId);
+
+        /// <summary>
+        /// Gets all warehouses
+        /// </summary>
+        /// <returns>Warehouses</returns>
+        IList<Warehouse> GetAllWarehouses();
+
+        /// <summary>
+        /// Inserts a warehouse
+        /// </summary>
+        /// <param name="warehouse">Warehouse</param>
+        void InsertWarehouse(Warehouse warehouse);
+
+        /// <summary>
+        /// Updates the warehouse
+        /// </summary>
+        /// <param name="warehouse">Warehouse</param>
+        void UpdateWarehouse(Warehouse warehouse);
+
+
+
 
         /// <summary>
         /// Gets shopping cart item weight (of one item)
@@ -76,26 +145,50 @@ namespace Nop.Services.Shipping
         decimal GetShoppingCartItemWeight(ShoppingCartItem shoppingCartItem);
 
         /// <summary>
-        /// Gets shopping cart item total weight
-        /// </summary>
-        /// <param name="shoppingCartItem">Shopping cart item</param>
-        /// <returns>Shopping cart item weight</returns>
-        decimal GetShoppingCartItemTotalWeight(ShoppingCartItem shoppingCartItem);
-
-        /// <summary>
         /// Gets shopping cart weight
         /// </summary>
         /// <param name="cart">Cart</param>
+        /// <param name="includeCheckoutAttributes">A value indicating whether we should calculate weights of selected checkotu attributes</param>
         /// <returns>Shopping cart weight</returns>
-        decimal GetShoppingCartTotalWeight(IList<ShoppingCartItem> cart);
-        
+        decimal GetTotalWeight(IList<ShoppingCartItem> cart, bool includeCheckoutAttributes = true);
+
         /// <summary>
-        /// Create shipment package from shopping cart
+        /// Get dimensions
+        /// </summary>
+        /// <param name="cart">Shipping cart items</param>
+        /// <param name="width">Width</param>
+        /// <param name="length">Length</param>
+        /// <param name="height">Height</param>
+        void GetDimensions(IList<ShoppingCartItem> cart, out decimal width, out decimal length, out decimal height);
+
+        /// <summary>
+        /// Gets total width
+        /// </summary>
+        /// <param name="cart">Shipping cart items</param>
+        /// <returns>Total width</returns>
+        decimal GetTotalWidth(IList<ShoppingCartItem> cart);
+
+        /// <summary>
+        /// Gets total length
+        /// </summary>
+        /// <param name="cart">Shipping cart items</param>
+        /// <returns>Total length</returns>
+        decimal GetTotalLength(IList<ShoppingCartItem> cart);
+
+        /// <summary>
+        /// Gets total height
+        /// </summary>
+        /// <param name="cart">Shipping cart items</param>
+        /// <returns>Total height</returns>
+        decimal GetTotalHeight(IList<ShoppingCartItem> cart);
+
+        /// <summary>
+        /// Create shipment packages (requests) from shopping cart
         /// </summary>
         /// <param name="cart">Shopping cart</param>
         /// <param name="shippingAddress">Shipping address</param>
-        /// <returns>Shipment package</returns>
-        GetShippingOptionRequest CreateShippingOptionRequest(IList<ShoppingCartItem> cart, Address shippingAddress);
+        /// <returns>Shipment packages (requests)</returns>
+        IList<GetShippingOptionRequest> CreateShippingOptionRequests(IList<ShoppingCartItem> cart, Address shippingAddress);
 
         /// <summary>
         ///  Gets available shipping options
@@ -103,8 +196,9 @@ namespace Nop.Services.Shipping
         /// <param name="cart">Shopping cart</param>
         /// <param name="shippingAddress">Shipping address</param>
         /// <param name="allowedShippingRateComputationMethodSystemName">Filter by shipping rate computation method identifier; null to load shipping options of all shipping rate computation methods</param>
+        /// <param name="storeId">Load records allowed only in a specified store; pass 0 to load all records</param>
         /// <returns>Shipping options</returns>
         GetShippingOptionResponse GetShippingOptions(IList<ShoppingCartItem> cart, Address shippingAddress,
-            string allowedShippingRateComputationMethodSystemName = "");
+            string allowedShippingRateComputationMethodSystemName = "", int storeId = 0);
     }
 }

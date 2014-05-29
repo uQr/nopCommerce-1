@@ -8,14 +8,12 @@ using Nop.Core.Plugins;
 using Nop.Services.Cms;
 using Nop.Services.Configuration;
 using Nop.Services.Security;
-using Nop.Web.Framework;
-using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-    public partial class WidgetController : BaseNopController
+    public partial class WidgetController : BaseAdminController
 	{
 		#region Fields
 
@@ -54,24 +52,11 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
                 return AccessDeniedView();
 
-            var widgetsModel = new List<WidgetModel>();
-            var widgets = _widgetService.LoadAllWidgets();
-            foreach (var widget in widgets)
-            {
-                var tmp1 = widget.ToModel();
-                tmp1.IsActive = widget.IsWidgetActive(_widgetSettings);
-                widgetsModel.Add(tmp1);
-            }
-            var gridModel = new GridModel<WidgetModel>
-            {
-                Data = widgetsModel,
-                Total = widgetsModel.Count()
-            };
-            return View(gridModel);
+            return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
                 return AccessDeniedView();
@@ -84,20 +69,18 @@ namespace Nop.Admin.Controllers
                 tmp1.IsActive = widget.IsWidgetActive(_widgetSettings);
                 widgetsModel.Add(tmp1);
             }
-            widgetsModel = widgetsModel.ForCommand(command).ToList();
-            var gridModel = new GridModel<WidgetModel>
+            widgetsModel = widgetsModel.ToList();
+            var gridModel = new DataSourceResult
             {
                 Data = widgetsModel,
                 Total = widgetsModel.Count()
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult WidgetUpdate(WidgetModel model, GridCommand command)
+        [HttpPost]
+        public ActionResult WidgetUpdate([Bind(Exclude = "ConfigurationRouteValues")] WidgetModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageWidgets))
                 return AccessDeniedView();
@@ -128,7 +111,7 @@ namespace Nop.Admin.Controllers
             //reset plugin cache
             _pluginFinder.ReloadPlugins();
 
-            return List(command);
+            return new NullJsonResult();
         }
         
         public ActionResult ConfigureWidget(string systemName)

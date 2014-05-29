@@ -11,12 +11,11 @@ using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-	public partial class CampaignController : BaseNopController
+	public partial class CampaignController : BaseAdminController
 	{
         private readonly ICampaignService _campaignService;
         private readonly IDateTimeHelper _dateTimeHelper;
@@ -68,28 +67,17 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCampaigns))
                 return AccessDeniedView();
 
-            var campaigns = _campaignService.GetAllCampaigns();
-            var gridModel = new GridModel<CampaignModel>
-            {
-                Data = campaigns.Select(x =>
-                {
-                    var model = x.ToModel();
-                    model.CreatedOn = _dateTimeHelper.ConvertToUserTime(x.CreatedOnUtc, DateTimeKind.Utc);
-                    return model;
-                }),
-                Total = campaigns.Count
-            };
-            return View(gridModel);
+            return View();
 		}
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCampaigns))
                 return AccessDeniedView();
 
             var campaigns = _campaignService.GetAllCampaigns();
-            var gridModel = new GridModel<CampaignModel>
+            var gridModel = new DataSourceResult
             {
                 Data = campaigns.Select(x =>
                 {
@@ -99,10 +87,7 @@ namespace Nop.Admin.Controllers
                 }),
                 Total = campaigns.Count
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+            return Json(gridModel);
         }
 
         public ActionResult Create()
@@ -115,7 +100,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(CampaignModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCampaigns))
@@ -152,7 +137,7 @@ namespace Nop.Admin.Controllers
 		}
 
         [HttpPost]
-        [ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [ParameterBasedOnFormName("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(CampaignModel model, bool continueEditing)
         {

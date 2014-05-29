@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using Nop.Core;
-using Nop.Services.Stores;
 using Nop.Services.Tasks;
 
 namespace Nop.Services.Common
@@ -22,7 +21,7 @@ namespace Nop.Services.Common
         /// </summary>
         public void Execute()
         {
-            string url = _storeContext.CurrentStore.Url + "keepalive";
+            string url = _storeContext.CurrentStore.Url + "keepalive/index";
             using (var wc = new WebClient())
             {
                 wc.DownloadString(url);

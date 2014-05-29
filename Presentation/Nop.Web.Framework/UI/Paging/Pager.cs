@@ -106,7 +106,7 @@ namespace Nop.Web.Framework.UI.Paging
         {
             return ToHtmlString();
         }
-		public string ToHtmlString()
+		public virtual string ToHtmlString()
 		{
             if (model.TotalItems == 0) 
 				return null;
@@ -123,35 +123,23 @@ namespace Nop.Web.Framework.UI.Paging
             {
                 if (showFirst)
                 {
+                    //first page
                     if ((model.PageIndex >= 3) && (model.TotalPages > individualPagesDisplayedCount))
                     {
-                        //if (showIndividualPages)
-                        //{
-                        //    links.Append("&nbsp;");
-                        //}
-
                         links.Append(CreatePageLink(1, localizationService.GetResource("Pager.First"), "first-page"));
-
-                        //if ((showIndividualPages || (showPrevious && (model.PageIndex > 0))) || showLast)
-                        //{
-                        //    links.Append("&nbsp;...&nbsp;");
-                        //}
                     }
                 }
                 if (showPrevious)
                 {
+                    //previous page
                     if (model.PageIndex > 0)
                     {
                         links.Append(CreatePageLink(model.PageIndex, localizationService.GetResource("Pager.Previous"), "previous-page"));
-
-                        //if ((showIndividualPages || showLast) || (showNext && ((model.PageIndex + 1) < model.TotalPages)))
-                        //{
-                        //    links.Append("&nbsp;");
-                        //}
                     }
                 }
                 if (showIndividualPages)
                 {
+                    //individual pages
                     int firstIndividualPageIndex = GetFirstIndividualPageIndex();
                     int lastIndividualPageIndex = GetLastIndividualPageIndex();
                     for (int i = firstIndividualPageIndex; i <= lastIndividualPageIndex; i++)
@@ -164,33 +152,21 @@ namespace Nop.Web.Framework.UI.Paging
                         {
                             links.Append(CreatePageLink(i + 1, (i + 1).ToString(), "individual-page"));
                         }
-                        //if (i < lastIndividualPageIndex)
-                        //{
-                        //    links.Append("&nbsp;");
-                        //}
                     }
                 }
                 if (showNext)
                 {
+                    //next page
                     if ((model.PageIndex + 1) < model.TotalPages)
                     {
-                        //if (showIndividualPages)
-                        //{
-                        //    links.Append("&nbsp;");
-                        //}
-
                         links.Append(CreatePageLink(model.PageIndex + 2, localizationService.GetResource("Pager.Next"), "next-page"));
                     }
                 }
                 if (showLast)
                 {
+                    //last page
                     if (((model.PageIndex + 3) < model.TotalPages) && (model.TotalPages > individualPagesDisplayedCount))
                     {
-                        //if (showIndividualPages || (showNext && ((model.PageIndex + 1) < model.TotalPages)))
-                        //{
-                        //    links.Append("&nbsp;...&nbsp;");
-                        //}
-
                         links.Append(CreatePageLink(model.TotalPages, localizationService.GetResource("Pager.Last"), "last-page"));
                     }
                 }
@@ -270,7 +246,18 @@ namespace Nop.Web.Framework.UI.Paging
 				routeValues[key] = value;
 			}
 
-			routeValues[pageQueryName] = pageNumber;
+            if (pageNumber > 1)
+            {
+                routeValues[pageQueryName] = pageNumber;
+            }
+            else
+            {
+                //SEO. we do not render pageindex query string parameter for the first page
+                if (routeValues.ContainsKey(pageQueryName))
+                {
+                    routeValues.Remove(pageQueryName);
+                }
+            }
 
 			var url = UrlHelper.GenerateUrl(null, null, null, routeValues, RouteTable.Routes, viewContext.RequestContext, true);
 			return url;

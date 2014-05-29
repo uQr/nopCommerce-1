@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Web;
 using System.Web.Mvc;
 using Nop.Core;
 using Nop.Core.Domain.Stores;
-using Nop.Core.Domain.Tasks;
 using Nop.Core.Plugins;
 using Nop.Plugin.Feed.Froogle.Domain;
 using Nop.Plugin.Feed.Froogle.Models;
@@ -19,14 +16,14 @@ using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Security;
 using Nop.Services.Stores;
-using Nop.Services.Tasks;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Plugin.Feed.Froogle.Controllers
 {
     [AdminAuthorize]
-    public class FeedFroogleController : Controller
+    public class FeedFroogleController : BasePluginController
     {
         private readonly IGoogleService _googleService;
         private readonly IProductService _productService;
@@ -178,24 +175,24 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
             return View("Nop.Plugin.Feed.Froogle.Views.FeedFroogle.Configure", model);
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult GoogleProductList(GridCommand command)
+        [HttpPost]
+        public ActionResult GoogleProductList(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
                 return Content("Access denied");
 
-            var productVariants = _productService.SearchProductVariants(0, 0, 0, "", false,
-                command.Page - 1, command.PageSize, true);
-            var productVariantsModel = productVariants
+            var products = _productService.SearchProducts(pageIndex: command.Page - 1,
+                pageSize: command.PageSize, showHidden: true);
+            var productsModel = products
                 .Select(x =>
                             {
                                 var gModel = new FeedFroogleModel.GoogleProductModel()
                                 {
-                                    ProductVariantId = x.Id,
-                                    FullProductVariantName = x.FullProductName
+                                    ProductId = x.Id,
+                                    ProductName = x.Name
 
                                 };
-                                var googleProduct = _googleService.GetByProductVariantId(x.Id);
+                                var googleProduct = _googleService.GetByProductId(x.Id);
                                 if (googleProduct != null)
                                 {
                                     gModel.GoogleCategory = googleProduct.Taxonomy;
@@ -209,25 +206,22 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
                             })
                 .ToList();
 
-            var model = new GridModel<FeedFroogleModel.GoogleProductModel>
+            var gridModel = new DataSourceResult
             {
-                Data = productVariantsModel,
-                Total = productVariants.TotalCount
+                Data = productsModel,
+                Total = products.TotalCount
             };
 
-            return new JsonResult
-            {
-                Data = model
-            };
+            return Json(gridModel);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult GoogleProductUpdate(GridCommand command, FeedFroogleModel.GoogleProductModel model)
+        [HttpPost]
+        public ActionResult GoogleProductUpdate(FeedFroogleModel.GoogleProductModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
                 return Content("Access denied");
 
-            var googleProduct = _googleService.GetByProductVariantId(model.ProductVariantId);
+            var googleProduct = _googleService.GetByProductId(model.ProductId);
             if (googleProduct != null)
             {
 
@@ -243,7 +237,7 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
                 //insert
                 googleProduct = new GoogleProductRecord()
                 {
-                    ProductVariantId = model.ProductVariantId,
+                    ProductId = model.ProductId,
                     Taxonomy = model.GoogleCategory,
                     Gender = model.Gender,
                     AgeGroup = model.AgeGroup,
@@ -252,8 +246,8 @@ namespace Nop.Plugin.Feed.Froogle.Controllers
                 };
                 _googleService.InsertGoogleProductRecord(googleProduct);
             }
-            
-            return GoogleProductList(command);
+
+            return new NullJsonResult();
         }
     }
 }

@@ -8,14 +8,13 @@ using Nop.Core.Plugins;
 using Nop.Services.Authentication.External;
 using Nop.Services.Configuration;
 using Nop.Services.Security;
-using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-    public partial class ExternalAuthenticationController : BaseNopController
+    public partial class ExternalAuthenticationController : BaseAdminController
 	{
 		#region Fields
 
@@ -50,24 +49,11 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageExternalAuthenticationMethods))
                 return AccessDeniedView();
 
-            var methodsModel = new List<AuthenticationMethodModel>();
-            var methods = _openAuthenticationService.LoadAllExternalAuthenticationMethods();
-            foreach (var method in methods)
-            {
-                var tmp1 = method.ToModel();
-                tmp1.IsActive = method.IsMethodActive(_externalAuthenticationSettings);
-                methodsModel.Add(tmp1);
-            }
-            var gridModel = new GridModel<AuthenticationMethodModel>
-            {
-                Data = methodsModel,
-                Total = methodsModel.Count()
-            };
-            return View(gridModel);
+            return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult Methods(GridCommand command)
+        [HttpPost]
+        public ActionResult Methods(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageExternalAuthenticationMethods))
                 return AccessDeniedView();
@@ -80,20 +66,18 @@ namespace Nop.Admin.Controllers
                 tmp1.IsActive = method.IsMethodActive(_externalAuthenticationSettings);
                 methodsModel.Add(tmp1);
             }
-            methodsModel = methodsModel.ForCommand(command).ToList();
-            var gridModel = new GridModel<AuthenticationMethodModel>
+            methodsModel = methodsModel.ToList();
+            var gridModel = new DataSourceResult
             {
                 Data = methodsModel,
-                Total = methodsModel.Count()
+                Total = methodsModel.Count
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult MethodUpdate(AuthenticationMethodModel model, GridCommand command)
+        [HttpPost]
+        public ActionResult MethodUpdate([Bind(Exclude = "ConfigurationRouteValues")] AuthenticationMethodModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageExternalAuthenticationMethods))
                 return AccessDeniedView();
@@ -122,8 +106,8 @@ namespace Nop.Admin.Controllers
             PluginFileParser.SavePluginDescriptionFile(pluginDescriptor);
             //reset plugin cache
             _pluginFinder.ReloadPlugins();
-            
-            return Methods(command);
+
+            return new NullJsonResult();
         }
 
         public ActionResult ConfigureMethod(string systemName)

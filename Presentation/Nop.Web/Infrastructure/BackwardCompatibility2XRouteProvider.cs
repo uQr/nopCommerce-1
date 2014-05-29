@@ -39,6 +39,17 @@ namespace Nop.Web.Infrastructure
                 new { controller = "BackwardCompatibility2X", action = "RedirectBlogPostById", SeName = UrlParameter.Optional },
                 new { blogPostId = @"\d+" },
                 new[] { "Nop.Web.Controllers" });
+
+            //topic
+            routes.MapLocalizedRoute("", "t/{SystemName}",
+                new { controller = "BackwardCompatibility2X", action = "RedirectTopicBySystemName" },
+                new[] { "Nop.Web.Controllers" });
+
+            //vendors
+            routes.MapLocalizedRoute("", "vendor/{vendorId}/{SeName}",
+                new { controller = "BackwardCompatibility2X", action = "RedirectVendorById", SeName = UrlParameter.Optional },
+                new { vendorId = @"\d+" },
+                new[] { "Nop.Web.Controllers" });
         }
 
         public int Priority

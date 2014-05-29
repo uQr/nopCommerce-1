@@ -4,7 +4,6 @@ using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Blogs;
 using Nop.Core.Domain.Blogs;
-using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Services.Blogs;
 using Nop.Services.Helpers;
@@ -14,12 +13,12 @@ using Nop.Services.Seo;
 using Nop.Services.Stores;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-    public partial class BlogController : BaseNopController
+    public partial class BlogController : BaseAdminController
 	{
 		#region Fields
 
@@ -31,7 +30,6 @@ namespace Nop.Admin.Controllers
         private readonly IUrlRecordService _urlRecordService;
         private readonly IStoreService _storeService;
         private readonly IStoreMappingService _storeMappingService;
-        private readonly AdminAreaSettings _adminAreaSettings;
 
         #endregion
 
@@ -41,8 +39,7 @@ namespace Nop.Admin.Controllers
             IDateTimeHelper dateTimeHelper, 
             ILocalizationService localizationService, IPermissionService permissionService,
             IUrlRecordService urlRecordService,
-            IStoreService storeService, IStoreMappingService storeMappingService,
-            AdminAreaSettings adminAreaSettings)
+            IStoreService storeService, IStoreMappingService storeMappingService)
         {
             this._blogService = blogService;
             this._languageService = languageService;
@@ -52,7 +49,6 @@ namespace Nop.Admin.Controllers
             this._urlRecordService = urlRecordService;
             this._storeService = storeService;
             this._storeMappingService = storeMappingService;
-            this._adminAreaSettings = adminAreaSettings;
 		}
 
 		#endregion 
@@ -122,14 +118,14 @@ namespace Nop.Admin.Controllers
 			return View();
 		}
 
-		[HttpPost, GridAction(EnableCustomBinding = true)]
-		public ActionResult List(GridCommand command)
+		[HttpPost]
+        public ActionResult List(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageBlog))
                 return AccessDeniedView();
 
             var blogPosts = _blogService.GetAllBlogPosts(0, 0, null, null, command.Page - 1, command.PageSize, true);
-            var gridModel = new GridModel<BlogPostModel>
+            var gridModel = new DataSourceResult
             {
                 Data = blogPosts.Select(x =>
                 {
@@ -165,7 +161,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(BlogPostModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageBlog))
@@ -216,7 +212,7 @@ namespace Nop.Admin.Controllers
             return View(model);
 		}
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
 		public ActionResult Edit(BlogPostModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageBlog))
@@ -242,7 +238,17 @@ namespace Nop.Admin.Controllers
                 SaveStoreMappings(blogPost, model);
 
                 SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Blog.BlogPosts.Updated"));
-                return continueEditing ? RedirectToAction("Edit", new { id = blogPost.Id }) : RedirectToAction("List");
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", new {id = blogPost.Id});
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
             //If we got this far, something failed, redisplay form
@@ -282,8 +288,8 @@ namespace Nop.Admin.Controllers
             return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult Comments(int? filterByBlogPostId, GridCommand command)
+        [HttpPost]
+        public ActionResult Comments(int? filterByBlogPostId, DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageBlog))
                 return AccessDeniedView();
@@ -301,7 +307,7 @@ namespace Nop.Admin.Controllers
                 comments = _blogService.GetAllComments(0);
             }
 
-            var gridModel = new GridModel<BlogCommentModel>
+            var gridModel = new DataSourceResult
             {
                 Data = comments.PagedForCommand(command).Select(blogComment =>
                 {
@@ -318,14 +324,10 @@ namespace Nop.Admin.Controllers
                 }),
                 Total = comments.Count,
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+            return Json(gridModel);
         }
-        
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult CommentDelete(int? filterByBlogPostId, int id, GridCommand command)
+
+        public ActionResult CommentDelete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageBlog))
                 return AccessDeniedView();
@@ -340,7 +342,7 @@ namespace Nop.Admin.Controllers
             blogPost.CommentCount = blogPost.BlogComments.Count;
             _blogService.UpdateBlogPost(blogPost);
 
-            return Comments(filterByBlogPostId, command);
+            return new NullJsonResult();
         }
 
 

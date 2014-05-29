@@ -1,8 +1,6 @@
 ﻿using FluentValidation.TestHelper;
 using Nop.Core.Domain.Common;
-using Nop.Core.Domain.Customers;
 using Nop.Web.Models.Common;
-using Nop.Web.Models.Customer;
 using Nop.Web.Validators.Common;
 using NUnit.Framework;
 

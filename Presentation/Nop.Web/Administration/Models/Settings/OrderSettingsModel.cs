@@ -35,13 +35,37 @@ namespace Nop.Admin.Models.Settings
         public bool AnonymousCheckoutAllowed { get; set; }
         public bool AnonymousCheckoutAllowed_OverrideForStore { get; set; }
 
-        [NopResourceDisplayName("Admin.Configuration.Settings.Order.TermsOfServiceEnabled")]
-        public bool TermsOfServiceEnabled { get; set; }
-        public bool TermsOfServiceEnabled_OverrideForStore { get; set; }
+        [NopResourceDisplayName("Admin.Configuration.Settings.Order.TermsOfServiceOnShoppingCartPage")]
+        public bool TermsOfServiceOnShoppingCartPage { get; set; }
+        public bool TermsOfServiceOnShoppingCartPage_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Order.TermsOfServiceOnOrderConfirmPage")]
+        public bool TermsOfServiceOnOrderConfirmPage { get; set; }
+        public bool TermsOfServiceOnOrderConfirmPage_OverrideForStore { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Order.OnePageCheckoutEnabled")]
         public bool OnePageCheckoutEnabled { get; set; }
         public bool OnePageCheckoutEnabled_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Order.OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab")]
+        public bool OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab { get; set; }
+        public bool OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Order.DisableBillingAddressCheckoutStep")]
+        public bool DisableBillingAddressCheckoutStep { get; set; }
+        public bool DisableBillingAddressCheckoutStep_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Order.DisableOrderCompletedPage")]
+        public bool DisableOrderCompletedPage { get; set; }
+        public bool DisableOrderCompletedPage_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Order.AttachPdfInvoiceToOrderPlacedEmail")]
+        public bool AttachPdfInvoiceToOrderPlacedEmail { get; set; }
+        public bool AttachPdfInvoiceToOrderPlacedEmail_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Order.AttachPdfInvoiceToOrderCompletedEmail")]
+        public bool AttachPdfInvoiceToOrderCompletedEmail { get; set; }
+        public bool AttachPdfInvoiceToOrderCompletedEmail_OverrideForStore { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Order.ReturnRequestsEnabled")]
         public bool ReturnRequestsEnabled { get; set; }

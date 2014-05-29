@@ -1,8 +1,4 @@
 ﻿@model QueuedEmailModel
-           
-
-@using Telerik.Web.Mvc.UI;
-
 @Html.ValidationSummary(true)
 @Html.HiddenFor(model => model.Id)
 
@@ -88,6 +84,17 @@
             @Html.ValidationMessageFor(model => model.Body)
         </td>
     </tr>
+    @if (!String.IsNullOrEmpty(Model.AttachmentFilePath))
+    {
+    <tr>
+        <td class="adminTitle">
+            @Html.NopLabelFor(model => model.AttachmentFilePath):
+        </td>
+        <td class="adminData">
+            @Html.DisplayFor(model => model.AttachmentFilePath)
+        </td>
+    </tr>
+    }
     <tr>
         <td class="adminTitle">
             @Html.NopLabelFor(model => model.CreatedOn):

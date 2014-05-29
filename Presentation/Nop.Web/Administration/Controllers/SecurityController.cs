@@ -10,12 +10,10 @@ using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Security;
-using Nop.Web.Framework.Controllers;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-    public partial class SecurityController : BaseNopController
+    public partial class SecurityController : BaseAdminController
 	{
 		#region Fields
 
@@ -72,7 +70,8 @@ namespace Nop.Admin.Controllers
             {
                 model.AvailablePermissions.Add(new PermissionRecordModel()
                 {
-                    Name = pr.Name,
+                    //Name = pr.Name,
+                    Name = pr.GetLocalizedPermissionName(_localizationService, _workContext),
                     SystemName = pr.SystemName
                 });
             }
@@ -137,6 +136,7 @@ namespace Nop.Admin.Controllers
             SuccessNotification(_localizationService.GetResource("Admin.Configuration.ACL.Updated"));
             return RedirectToAction("Permissions");
         }
+
         #endregion
     }
 }

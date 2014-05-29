@@ -1,20 +1,18 @@
 ﻿using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Threading;
 using System.Web.Mvc;
+using Nop.Core;
 using Nop.Plugin.Shipping.FixedRateShipping.Models;
 using Nop.Services.Configuration;
 using Nop.Services.Security;
 using Nop.Services.Shipping;
-using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Plugin.Shipping.FixedRateShipping.Controllers
 {
     [AdminAuthorize]
-    public class ShippingFixedRateController : Controller
+    public class ShippingFixedRateController : BasePluginController
     {
         private readonly IShippingService _shippingService;
         private readonly ISettingService _settingService;
@@ -33,9 +31,7 @@ namespace Nop.Plugin.Shipping.FixedRateShipping.Controllers
         {
             //little hack here
             //always set culture to 'en-US' (Telerik has a bug related to editing decimal values in other cultures). Like currently it's done for admin area in Global.asax.cs
-            var culture = new CultureInfo("en-US");
-            Thread.CurrentThread.CurrentCulture = culture;
-            Thread.CurrentThread.CurrentUICulture = culture;
+            CommonHelper.SetTelerikCulture();
 
             base.Initialize(requestContext);
         }
@@ -43,57 +39,34 @@ namespace Nop.Plugin.Shipping.FixedRateShipping.Controllers
         [ChildActionOnly]
         public ActionResult Configure()
         {
-            var shippingMethods = _shippingService.GetAllShippingMethods();
-            if (shippingMethods.Count == 0)
-                return Content("No shipping methods can be loaded");
-
-            var tmp = new List<FixedShippingRateModel>();
-            foreach (var shippingMethod in shippingMethods)
-                tmp.Add(new FixedShippingRateModel()
-                {
-                    ShippingMethodId = shippingMethod.Id,
-                    ShippingMethodName = shippingMethod.Name,
-                    Rate = GetShippingRate(shippingMethod.Id)
-                });
-
-            var gridModel = new GridModel<FixedShippingRateModel>
-            {
-                Data = tmp,
-                Total = tmp.Count
-            };
-
-            return View("Nop.Plugin.Shipping.FixedRateShipping.Views.ShippingFixedRate.Configure", gridModel);
+            return View("Nop.Plugin.Shipping.FixedRateShipping.Views.ShippingFixedRate.Configure");
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult Configure(GridCommand command)
+        [HttpPost]
+        public ActionResult Configure(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
                 return Content("Access denied");
 
-            var tmp = new List<FixedShippingRateModel>();
+            var rateModels = new List<FixedShippingRateModel>();
             foreach (var shippingMethod in _shippingService.GetAllShippingMethods())
-                tmp.Add(new FixedShippingRateModel()
+                rateModels.Add(new FixedShippingRateModel()
                 {
                     ShippingMethodId = shippingMethod.Id,
                     ShippingMethodName = shippingMethod.Name,
                     Rate = GetShippingRate(shippingMethod.Id)
                 });
 
-            var tmp2 = tmp.ForCommand(command);
-            var gridModel = new GridModel<FixedShippingRateModel>
+            var gridModel = new DataSourceResult
             {
-                Data = tmp2,
-                Total = tmp2.Count()
+                Data = rateModels,
+                Total = rateModels.Count
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+            return Json(gridModel);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult ShippingRateUpdate(FixedShippingRateModel model, GridCommand command)
+        [HttpPost]
+        public ActionResult ShippingRateUpdate(FixedShippingRateModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageShippingSettings))
                 return Content("Access denied");
@@ -103,25 +76,7 @@ namespace Nop.Plugin.Shipping.FixedRateShipping.Controllers
 
             _settingService.SetSetting(string.Format("ShippingRateComputationMethod.FixedRate.Rate.ShippingMethodId{0}", shippingMethodId), rate);
 
-            var tmp = new List<FixedShippingRateModel>();
-            foreach (var shippingMethod in _shippingService.GetAllShippingMethods())
-                tmp.Add(new FixedShippingRateModel()
-                {
-                    ShippingMethodId = shippingMethod.Id,
-                    ShippingMethodName = shippingMethod.Name,
-                    Rate = GetShippingRate(shippingMethod.Id)
-                });
-
-            var tmp2 = tmp.ForCommand(command);
-            var gridModel = new GridModel<FixedShippingRateModel>
-            {
-                Data = tmp2,
-                Total = tmp2.Count()
-            };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+            return new NullJsonResult();
         }
 
         [NonAction]

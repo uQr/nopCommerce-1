@@ -11,12 +11,11 @@ using Nop.Services.Logging;
 using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class LogController : BaseNopController
+    public partial class LogController : BaseAdminController
     {
         private readonly ILogger _logger;
         private readonly IWorkContext _workContext;
@@ -52,9 +51,10 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult LogList(GridCommand command, LogListModel model)
+        [HttpPost]
+        public ActionResult LogList(DataSourceRequest command, LogListModel model)
         {
+
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageSystemLog))
                 return AccessDeniedView();
 
@@ -69,7 +69,7 @@ namespace Nop.Admin.Controllers
 
             var logItems = _logger.GetAllLogs(createdOnFromValue, createdToFromValue, model.Message,
                 logLevel, command.Page - 1, command.PageSize);
-            var gridModel = new GridModel<LogModel>
+            var gridModel = new DataSourceResult
             {
                 Data = logItems.Select(x =>
                 {
@@ -89,12 +89,10 @@ namespace Nop.Admin.Controllers
                 }),
                 Total = logItems.TotalCount
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
-        
+
         [HttpPost, ActionName("List")]
         [FormValueRequired("clearall")]
         public ActionResult ClearAll()

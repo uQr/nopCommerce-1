@@ -5,15 +5,15 @@ using Nop.Admin.Models.Topics;
 using Nop.Core.Domain.Topics;
 using Nop.Services.Localization;
 using Nop.Services.Security;
+using Nop.Services.Seo;
 using Nop.Services.Stores;
 using Nop.Services.Topics;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class TopicController : BaseNopController
+    public partial class TopicController : BaseAdminController
     {
         #region Fields
 
@@ -24,15 +24,20 @@ namespace Nop.Admin.Controllers
         private readonly IPermissionService _permissionService;
         private readonly IStoreService _storeService;
         private readonly IStoreMappingService _storeMappingService;
+        private readonly IUrlRecordService _urlRecordService;
 
         #endregion Fields
 
         #region Constructors
 
-        public TopicController(ITopicService topicService, ILanguageService languageService,
-            ILocalizedEntityService localizedEntityService, ILocalizationService localizationService,
-            IPermissionService permissionService, IStoreService storeService,
-            IStoreMappingService storeMappingService)
+        public TopicController(ITopicService topicService,
+            ILanguageService languageService,
+            ILocalizedEntityService localizedEntityService, 
+            ILocalizationService localizationService,
+            IPermissionService permissionService, 
+            IStoreService storeService,
+            IStoreMappingService storeMappingService,
+            IUrlRecordService urlRecordService)
         {
             this._topicService = topicService;
             this._languageService = languageService;
@@ -41,6 +46,7 @@ namespace Nop.Admin.Controllers
             this._permissionService = permissionService;
             this._storeService = storeService;
             this._storeMappingService = storeMappingService;
+            this._urlRecordService = urlRecordService;
         }
 
         #endregion
@@ -76,6 +82,10 @@ namespace Nop.Admin.Controllers
                                                            x => x.MetaTitle,
                                                            localized.MetaTitle,
                                                            localized.LanguageId);
+
+                //search engine name
+                var seName = topic.ValidateSeName(localized.SeName, localized.Title, false);
+                _urlRecordService.SaveSlug(topic, seName, localized.LanguageId);
             }
         }
 
@@ -148,22 +158,30 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command, TopicListModel model)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command, TopicListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageTopics))
                 return AccessDeniedView();
 
-            var topics = _topicService.GetAllTopics(model.SearchStoreId);
-            var gridModel = new GridModel<TopicModel>
+            var topicModels = _topicService.GetAllTopics(model.SearchStoreId)
+                .Select(x =>x.ToModel())
+                .ToList();
+            //little hack here:
+            //we don't have paging supported for topic list page
+            //now ensure that topic bodies are not returned. otherwise, we can get the following error:
+            //"Error during serialization or deserialization using the JSON JavaScriptSerializer. The length of the string exceeds the value set on the maxJsonLength property. "
+            foreach (var topic in topicModels)
             {
-                Data = topics.Select(x =>x.ToModel()),
-                Total = topics.Count
-            };
-            return new JsonResult
+                topic.Body = "";
+            }
+            var gridModel = new DataSourceResult
             {
-                Data = gridModel
+                Data = topicModels,
+                Total = topicModels.Count
             };
+
+            return Json(gridModel);
         }
 
         #endregion
@@ -183,7 +201,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(TopicModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageTopics))
@@ -198,6 +216,9 @@ namespace Nop.Admin.Controllers
 
                 var topic = model.ToEntity();
                 _topicService.InsertTopic(topic);
+                //search engine name
+                model.SeName = topic.ValidateSeName(model.SeName, topic.Title ?? topic.SystemName, true);
+                _urlRecordService.SaveSlug(topic, model.SeName, 0);
                 //Stores
                 SaveStoreMappings(topic, model);
                 //locales
@@ -225,7 +246,7 @@ namespace Nop.Admin.Controllers
                 return RedirectToAction("List");
 
             var model = topic.ToModel();
-            model.Url = Url.RouteUrl("Topic", new { SystemName = topic.SystemName }, "http");
+            model.Url = Url.RouteUrl("Topic", new { SeName = topic.GetSeName() }, "http");
             //Store
             PrepareStoresMappingModel(model, topic, false);
             //locales
@@ -236,12 +257,13 @@ namespace Nop.Admin.Controllers
                 locale.MetaKeywords = topic.GetLocalized(x => x.MetaKeywords, languageId, false, false);
                 locale.MetaDescription = topic.GetLocalized(x => x.MetaDescription, languageId, false, false);
                 locale.MetaTitle = topic.GetLocalized(x => x.MetaTitle, languageId, false, false);
+                locale.SeName = topic.GetSeName(languageId, false, false);
             });
 
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Edit(TopicModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageTopics))
@@ -252,8 +274,6 @@ namespace Nop.Admin.Controllers
                 //No topic found with the specified id
                 return RedirectToAction("List");
 
-            model.Url = Url.RouteUrl("Topic", new { SystemName = topic.SystemName }, "http");
-
             if (!model.IsPasswordProtected)
             {
                 model.Password = null;
@@ -263,17 +283,33 @@ namespace Nop.Admin.Controllers
             {
                 topic = model.ToEntity(topic);
                 _topicService.UpdateTopic(topic);
+                //search engine name
+                model.SeName = topic.ValidateSeName(model.SeName, topic.Title ?? topic.SystemName, true);
+                _urlRecordService.SaveSlug(topic, model.SeName, 0);
                 //Stores
                 SaveStoreMappings(topic, model);
                 //locales
                 UpdateLocales(topic, model);
                 
                 SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.Topics.Updated"));
-                return continueEditing ? RedirectToAction("Edit", topic.Id) : RedirectToAction("List");
+                
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", topic.Id);
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
 
             //If we got this far, something failed, redisplay form
+
+            model.Url = Url.RouteUrl("Topic", new { SeName = topic.GetSeName() }, "http");
 
             //Store
             PrepareStoresMappingModel(model, topic, true);

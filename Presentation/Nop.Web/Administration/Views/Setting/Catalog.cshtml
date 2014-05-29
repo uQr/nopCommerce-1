@@ -1,5 +1,4 @@
 ﻿@model CatalogSettingsModel
-@using Telerik.Web.Mvc.UI;
 @{
     //page title
     ViewBag.Title = T("Admin.Configuration.Settings.Catalog").Text;
@@ -12,13 +11,14 @@
             @T("Admin.Configuration.Settings.Catalog")
         </div>
         <div class="options">
-            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
+            <input type="submit" name="save" class="k-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
     <script type="text/javascript">
         $(document).ready(function () {
 
             $("#@Html.FieldIdFor(model => model.ShowCategoryProductNumber)").click(toggleShowCategoryProductNumberIncludingSubcategories);
+            $("#@Html.FieldIdFor(model => model.ShowShareButton)").click(togglePageShareCode);
             $("#@Html.FieldIdFor(model => model.EmailAFriendEnabled)").click(toggleEmailAFriend);
             $("#@Html.FieldIdFor(model => model.RecentlyViewedProductsEnabled)").click(toggleRecentlyViewedProducts);
             $("#@Html.FieldIdFor(model => model.RecentlyAddedProductsEnabled)").click(toggleRecentlyAddedProducts);
@@ -28,6 +28,7 @@
             $("#@Html.FieldIdFor(model => model.ProductSearchAutoCompleteEnabled)").click(toggleProductSearchAutoComplete);
 
             toggleShowCategoryProductNumberIncludingSubcategories();
+            togglePageShareCode();
             toggleEmailAFriend();
             toggleRecentlyViewedProducts();
             toggleRecentlyAddedProducts();
@@ -43,6 +44,15 @@
             }
             else {
                 $('#pnlShowCategoryProductNumberIncludingSubcategories').hide();
+            }
+        }
+
+        function togglePageShareCode() {
+            if ($('#@Html.FieldIdFor(model => model.ShowShareButton)').is(':checked')) {
+                $('#pnlPageShareCode').show();
+            }
+            else {
+                $('#pnlPageShareCode').hide();
             }
         }
 
@@ -148,6 +158,16 @@
         </tr>
         <tr>
             <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.ShowFreeShippingNotification_OverrideForStore, model => model.ShowFreeShippingNotification, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.ShowFreeShippingNotification):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.ShowFreeShippingNotification)
+                @Html.ValidationMessageFor(model => model.ShowFreeShippingNotification)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
                 @Html.OverrideStoreCheckboxFor(model => model.AllowProductSorting_OverrideForStore, model => model.AllowProductSorting, Model.ActiveStoreScopeConfiguration)
                 @Html.NopLabelFor(model => model.AllowProductSorting):
             </td>
@@ -214,6 +234,16 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.ShowShareButton)
                 @Html.ValidationMessageFor(model => model.ShowShareButton)
+            </td>
+        </tr>
+        <tr id="pnlPageShareCode">
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.PageShareCode_OverrideForStore, model => model.PageShareCode, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.PageShareCode):
+            </td>
+            <td class="adminData">
+                @Html.TextAreaFor(model => model.PageShareCode, new { style = "Width: 500px; Height: 150px;" })
+                @Html.ValidationMessageFor(model => model.PageShareCode)
             </td>
         </tr>
         <tr>
@@ -448,6 +478,16 @@
         </tr>
         <tr>
             <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.TopCategoryMenuSubcategoryLevelsToDisplay_OverrideForStore, model => model.TopCategoryMenuSubcategoryLevelsToDisplay, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.TopCategoryMenuSubcategoryLevelsToDisplay):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.TopCategoryMenuSubcategoryLevelsToDisplay)
+                @Html.ValidationMessageFor(model => model.TopCategoryMenuSubcategoryLevelsToDisplay)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
                 @Html.OverrideStoreCheckboxFor(model => model.ManufacturersBlockItemsToDisplay_OverrideForStore, model => model.ManufacturersBlockItemsToDisplay, Model.ActiveStoreScopeConfiguration)
                 @Html.NopLabelFor(model => model.ManufacturersBlockItemsToDisplay):
             </td>
@@ -494,6 +534,56 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.IgnoreFeaturedProducts)
                 @Html.ValidationMessageFor(model => model.IgnoreFeaturedProducts)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.IgnoreAcl_OverrideForStore, model => model.IgnoreAcl, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.IgnoreAcl):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.IgnoreAcl)
+                @Html.ValidationMessageFor(model => model.IgnoreAcl)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.IgnoreStoreLimitations_OverrideForStore, model => model.IgnoreStoreLimitations, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.IgnoreStoreLimitations):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.IgnoreStoreLimitations)
+                @Html.ValidationMessageFor(model => model.IgnoreStoreLimitations)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.DisplayTaxShippingInfoFooter_OverrideForStore, model => model.DisplayTaxShippingInfoFooter, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.DisplayTaxShippingInfoFooter):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.DisplayTaxShippingInfoFooter)
+                @Html.ValidationMessageFor(model => model.DisplayTaxShippingInfoFooter)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.DisplayTaxShippingInfoProductDetailsPage_OverrideForStore, model => model.DisplayTaxShippingInfoProductDetailsPage, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.DisplayTaxShippingInfoProductDetailsPage):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.DisplayTaxShippingInfoProductDetailsPage)
+                @Html.ValidationMessageFor(model => model.DisplayTaxShippingInfoProductDetailsPage)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.DisplayTaxShippingInfoProductBoxes_OverrideForStore, model => model.DisplayTaxShippingInfoProductBoxes, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.DisplayTaxShippingInfoProductBoxes):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.DisplayTaxShippingInfoProductBoxes)
+                @Html.ValidationMessageFor(model => model.DisplayTaxShippingInfoProductBoxes)
             </td>
         </tr>
     </table>

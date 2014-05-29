@@ -13,7 +13,6 @@ namespace Nop.Plugin.Shipping.UPS.Models
             AvailableCustomerClassifications = new List<SelectListItem>();
             AvailablePickupTypes = new List<SelectListItem>();
             AvailablePackagingTypes = new List<SelectListItem>();
-            AvailableCountries = new List<SelectListItem>();
         }
         [NopResourceDisplayName("Plugins.Shipping.UPS.Fields.Url")]
         public string Url { get; set; }
@@ -44,18 +43,23 @@ namespace Nop.Plugin.Shipping.UPS.Models
         [NopResourceDisplayName("Plugins.Shipping.UPS.Fields.PackagingType")]
         public string PackagingType { get; set; }
         public IList<SelectListItem> AvailablePackagingTypes { get; set; }
-
-        [NopResourceDisplayName("Plugins.Shipping.UPS.Fields.DefaultShippedFromCountry")]
-        public int DefaultShippedFromCountryId { get; set; }
-        public IList<SelectListItem> AvailableCountries { get; set; }
-
-        [NopResourceDisplayName("Plugins.Shipping.UPS.Fields.DefaultShippedFromZipPostalCode")]
-        public string DefaultShippedFromZipPostalCode { get; set; }
-
-
+        
         public IList<string> CarrierServicesOffered { get; set; }
         [NopResourceDisplayName("Plugins.Shipping.UPS.Fields.AvailableCarrierServices")]
         public IList<string> AvailableCarrierServices { get; set; }
         public string[] CheckedCarrierServices { get; set; }
+
+        [NopResourceDisplayName("Plugins.Shipping.UPS.Fields.PassDimensions")]
+        public bool PassDimensions { get; set; }
+
+        [NopResourceDisplayName("Plugins.Shipping.UPS.Fields.PackingPackageVolume")]
+        public int PackingPackageVolume { get; set; }
+
+        public int PackingType { get; set; }
+        [NopResourceDisplayName("Plugins.Shipping.UPS.Fields.PackingType")]
+        public SelectList PackingTypeValues { get; set; }
+
+        [NopResourceDisplayName("Plugins.Shipping.UPS.Fields.Tracing")]
+        public bool Tracing { get; set; }
     }
 }

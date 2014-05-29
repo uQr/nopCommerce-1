@@ -1,9 +1,11 @@
-﻿
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Nop.Core.Configuration;
 
 namespace Nop.Core.Domain.Seo
 {
+    /// <summary>
+    /// SEO settings
+    /// </summary>
     public class SeoSettings : ISettings
     {
         public string PageTitleSeparator { get; set; }
@@ -17,10 +19,17 @@ namespace Nop.Core.Domain.Seo
 
         public bool CanonicalUrlsEnabled { get; set; }
 
+        public WwwRequirement WwwRequirement { get; set; }
+
         /// <summary>
         /// A value indicating whether JS file bundling and minification is enabled
         /// </summary>
         public bool EnableJsBundling { get; set; }
+
+        /// <summary>
+        /// A value indicating whether CSS file bundling and minification is enabled
+        /// </summary>
+        public bool EnableCssBundling { get; set; }
 
         /// <summary>
         /// Slugs (sename) reserved for some other needs

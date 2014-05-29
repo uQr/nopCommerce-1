@@ -20,7 +20,7 @@ using NuoDb.Data.Client;
 
 namespace Nop.Web.Controllers
 {
-    public partial class InstallController : BaseNopController
+    public partial class InstallController : BasePublicController
     {
         #region Fields
 
@@ -38,6 +38,24 @@ namespace Nop.Web.Controllers
         #endregion
 
         #region Utilities
+
+		[NonAction]
+		protected bool NuoDbDatabaseExists(string connectionString)
+		{
+			try
+			{
+				//just try to connect
+				using (var conn = new NuoDbConnection(connectionString))
+				{
+					conn.Open();
+				}
+				return true;
+			}
+			catch
+			{
+				return false;
+			}
+		}
 
         /// <summary>
         /// Checks if the specified database exists, returns true if database exists
@@ -61,29 +79,6 @@ namespace Nop.Web.Controllers
                 return false;
             }
         }
-
-		/// <summary>
-		/// Checks if the specified database exists, returns true if database exists
-		/// </summary>
-		/// <param name="connectionString">Connection string</param>
-		/// <returns>Returns true if the database exists.</returns>
-		[NonAction]
-		protected bool NuoDbDatabaseExists(string connectionString)
-		{
-			try
-			{
-				//just try to connect
-				using (var conn = new NuoDbConnection(connectionString))
-				{
-					conn.Open();
-				}
-				return true;
-			}
-			catch
-			{
-				return false;
-			}
-		}
 
         /// <summary>
         /// Creates a database on the server.
@@ -173,7 +168,7 @@ namespace Nop.Web.Controllers
                 AdminEmail = "admin@yourStore.com",
                 InstallSampleData = false,
                 DatabaseConnectionString = "",
-                DataProvider = "sqlserver",
+                DataProvider = "nuodb",
                 //fast installation service does not support SQL compact
                 DisableSqlCompact = !String.IsNullOrEmpty(ConfigurationManager.AppSettings["UseFastInstallationService"]) &&
                     Convert.ToBoolean(ConfigurationManager.AppSettings["UseFastInstallationService"]),
@@ -238,44 +233,44 @@ namespace Nop.Web.Controllers
 					ModelState.AddModelError("", _locService.GetResource("ConnectionStringWrongFormat"));
 				}
 			}
-			//SQL Server
-			else if (model.DataProvider.Equals("sqlserver", StringComparison.InvariantCultureIgnoreCase))
-			{
-				if (model.SqlConnectionInfo.Equals("sqlconnectioninfo_raw", StringComparison.InvariantCultureIgnoreCase))
-				{
-					//raw connection string
-					if (string.IsNullOrEmpty(model.DatabaseConnectionString))
-						ModelState.AddModelError("", _locService.GetResource("ConnectionStringRequired"));
+            //SQL Server
+            else if (model.DataProvider.Equals("sqlserver", StringComparison.InvariantCultureIgnoreCase))
+            {
+                if (model.SqlConnectionInfo.Equals("sqlconnectioninfo_raw", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    //raw connection string
+                    if (string.IsNullOrEmpty(model.DatabaseConnectionString))
+                        ModelState.AddModelError("", _locService.GetResource("ConnectionStringRequired"));
 
-					try
-					{
-						//try to create connection string
-						new SqlConnectionStringBuilder(model.DatabaseConnectionString);
-					}
-					catch
-					{
-						ModelState.AddModelError("", _locService.GetResource("ConnectionStringWrongFormat"));
-					}
-				}
-				else
-				{
-					//values
-					if (string.IsNullOrEmpty(model.SqlServerName))
-						ModelState.AddModelError("", _locService.GetResource("SqlServerNameRequired"));
-					if (string.IsNullOrEmpty(model.SqlDatabaseName))
-						ModelState.AddModelError("", _locService.GetResource("DatabaseNameRequired"));
+                    try
+                    {
+                        //try to create connection string
+                        new SqlConnectionStringBuilder(model.DatabaseConnectionString);
+                    }
+                    catch
+                    {
+                        ModelState.AddModelError("", _locService.GetResource("ConnectionStringWrongFormat"));
+                    }
+                }
+                else
+                {
+                    //values
+                    if (string.IsNullOrEmpty(model.SqlServerName))
+                        ModelState.AddModelError("", _locService.GetResource("SqlServerNameRequired"));
+                    if (string.IsNullOrEmpty(model.SqlDatabaseName))
+                        ModelState.AddModelError("", _locService.GetResource("DatabaseNameRequired"));
 
-					//authentication type
-					if (model.SqlAuthenticationType.Equals("sqlauthentication", StringComparison.InvariantCultureIgnoreCase))
-					{
-						//SQL authentication
-						if (string.IsNullOrEmpty(model.SqlServerUsername))
-							ModelState.AddModelError("", _locService.GetResource("SqlServerUsernameRequired"));
-						if (string.IsNullOrEmpty(model.SqlServerPassword))
-							ModelState.AddModelError("", _locService.GetResource("SqlServerPasswordRequired"));
-					}
-				}
-			}
+                    //authentication type
+                    if (model.SqlAuthenticationType.Equals("sqlauthentication", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        //SQL authentication
+                        if (string.IsNullOrEmpty(model.SqlServerUsername))
+                            ModelState.AddModelError("", _locService.GetResource("SqlServerUsernameRequired"));
+                        if (string.IsNullOrEmpty(model.SqlServerPassword))
+                            ModelState.AddModelError("", _locService.GetResource("SqlServerPasswordRequired"));
+                    }
+                }
+            }
 
 
             //Consider granting access rights to the resource to the ASP.NET request identity. 
@@ -311,66 +306,66 @@ namespace Nop.Web.Controllers
 						if (!NuoDbDatabaseExists(connectionString))
 							throw new Exception(_locService.GetResource("DatabaseNotExists"));
 					}
-					else if (model.DataProvider.Equals("sqlserver", StringComparison.InvariantCultureIgnoreCase))
-					{
-						//SQL Server
+                    else if (model.DataProvider.Equals("sqlserver", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        //SQL Server
 
-						if (model.SqlConnectionInfo.Equals("sqlconnectioninfo_raw", StringComparison.InvariantCultureIgnoreCase))
-						{
-							//raw connection string
+                        if (model.SqlConnectionInfo.Equals("sqlconnectioninfo_raw", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            //raw connection string
 
-							//we know that MARS option is required when using Entity Framework
-							//let's ensure that it's specified
-							var sqlCsb = new SqlConnectionStringBuilder(model.DatabaseConnectionString);
-							sqlCsb.MultipleActiveResultSets = true;
-							connectionString = sqlCsb.ToString();
-						}
-						else
-						{
-							//values
-							connectionString = CreateConnectionString(model.SqlAuthenticationType == "windowsauthentication",
-								model.SqlServerName, model.SqlDatabaseName,
-								model.SqlServerUsername, model.SqlServerPassword);
-						}
+                            //we know that MARS option is required when using Entity Framework
+                            //let's ensure that it's specified
+                            var sqlCsb = new SqlConnectionStringBuilder(model.DatabaseConnectionString);
+                            sqlCsb.MultipleActiveResultSets = true;
+                            connectionString = sqlCsb.ToString();
+                        }
+                        else
+                        {
+                            //values
+                            connectionString = CreateConnectionString(model.SqlAuthenticationType == "windowsauthentication",
+                                model.SqlServerName, model.SqlDatabaseName,
+                                model.SqlServerUsername, model.SqlServerPassword);
+                        }
+                        
+                        if (model.SqlServerCreateDatabase)
+                        {
+                            if (!SqlServerDatabaseExists(connectionString))
+                            {
+                                //create database
+                                var collation = model.UseCustomCollation ? model.Collation : "";
+                                var errorCreatingDatabase = CreateDatabase(connectionString, collation);
+                                if (!String.IsNullOrEmpty(errorCreatingDatabase))
+                                    throw new Exception(errorCreatingDatabase);
+                                else
+                                {
+                                    //Database cannot be created sometimes. Weird! Seems to be Entity Framework issue
+                                    //that's just wait 3 seconds
+                                    Thread.Sleep(3000);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            //check whether database exists
+                            if (!SqlServerDatabaseExists(connectionString))
+                                throw new Exception(_locService.GetResource("DatabaseNotExists"));
+                        }
+                    }
+                    else
+                    {
+                        //SQL CE
+                        string databaseFileName = "Nop.Db.sdf";
+                        string databasePath = @"|DataDirectory|\" + databaseFileName;
+                        connectionString = "Data Source=" + databasePath + ";Persist Security Info=False";
 
-						if (model.SqlServerCreateDatabase)
-						{
-							if (!SqlServerDatabaseExists(connectionString))
-							{
-								//create database
-								var collation = model.UseCustomCollation ? model.Collation : "";
-								var errorCreatingDatabase = CreateDatabase(connectionString, collation);
-								if (!String.IsNullOrEmpty(errorCreatingDatabase))
-									throw new Exception(errorCreatingDatabase);
-								else
-								{
-									//Database cannot be created sometimes. Weird! Seems to be Entity Framework issue
-									//that's just wait 3 seconds
-									Thread.Sleep(3000);
-								}
-							}
-						}
-						else
-						{
-							//check whether database exists
-							if (!SqlServerDatabaseExists(connectionString))
-								throw new Exception(_locService.GetResource("DatabaseNotExists"));
-						}
-					}
-					else
-					{
-						//SQL CE
-						string databaseFileName = "Nop.Db.sdf";
-						string databasePath = @"|DataDirectory|\" + databaseFileName;
-						connectionString = "Data Source=" + databasePath + ";Persist Security Info=False";
-
-						//drop database if exists
-						string databaseFullPath = HostingEnvironment.MapPath("~/App_Data/") + databaseFileName;
-						if (System.IO.File.Exists(databaseFullPath))
-						{
-							System.IO.File.Delete(databaseFullPath);
-						}
-					}
+                        //drop database if exists
+                        string databaseFullPath = HostingEnvironment.MapPath("~/App_Data/") + databaseFileName;
+                        if (System.IO.File.Exists(databaseFullPath))
+                        {
+                            System.IO.File.Delete(databaseFullPath);
+                        }
+                    }
 
                     //save settings
                     var dataProvider = model.DataProvider;
@@ -388,7 +383,6 @@ namespace Nop.Web.Controllers
                     
                     //now resolve installation service
                     var installationService = EngineContext.Current.Resolve<IInstallationService>();
-#warning NuoDB: NuoDB does support only Code First installation
                     installationService.InstallData(model.AdminEmail, model.AdminPassword, model.InstallSampleData);
 
                     //reset cache
@@ -412,7 +406,7 @@ namespace Nop.Web.Controllers
                     {
                         if (pluginsIgnoredDuringInstallation.Contains(plugin.PluginDescriptor.SystemName))
                             continue;
-						//plugin.Install();
+                        plugin.Install();
                     }
                     
                     //register default permissions

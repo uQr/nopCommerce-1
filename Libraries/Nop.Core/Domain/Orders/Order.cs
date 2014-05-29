@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using Nop.Core.Domain.Affiliates;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Discounts;
@@ -21,7 +20,7 @@ namespace Nop.Core.Domain.Orders
         private ICollection<DiscountUsageHistory> _discountUsageHistory;
         private ICollection<GiftCardUsageHistory> _giftCardUsageHistory;
         private ICollection<OrderNote> _orderNotes;
-        private ICollection<OrderProductVariant> _orderProductVariant;
+        private ICollection<OrderItem> _orderItems;
         private ICollection<Shipment> _shipments;
 
         #region Utilities
@@ -316,6 +315,11 @@ namespace Nop.Core.Domain.Orders
         public string ShippingRateComputationMethodSystemName { get; set; }
 
         /// <summary>
+        /// Gets or sets the serialized CustomValues (values from ProcessPaymentRequest)
+        /// </summary>
+        public string CustomValuesXml { get; set; }
+
+        /// <summary>
         /// Gets or sets a value indicating whether the entity has been deleted
         /// </summary>
         public bool Deleted { get; set; }
@@ -377,12 +381,12 @@ namespace Nop.Core.Domain.Orders
         }
 
         /// <summary>
-        /// Gets or sets order product variants
+        /// Gets or sets order items
         /// </summary>
-        public virtual ICollection<OrderProductVariant> OrderProductVariants
+        public virtual ICollection<OrderItem> OrderItems
         {
-            get { return _orderProductVariant ?? (_orderProductVariant = new List<OrderProductVariant>()); }
-            protected set { _orderProductVariant = value; }
+            get { return _orderItems ?? (_orderItems = new List<OrderItem>()); }
+            protected set { _orderItems = value; }
         }
 
         /// <summary>

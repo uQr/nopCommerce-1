@@ -137,7 +137,4 @@
   <LocaleResource Name="WindowsAuthentication">
     <Value>Utilizzare l'autenticazione integrata di Windows</Value>
   </LocaleResource>
-	<LocaleResource Name="NuoDB">
-		<Value>NuoDB</Value>
-	</LocaleResource>
 </Language>

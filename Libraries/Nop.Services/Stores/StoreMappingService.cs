@@ -4,10 +4,8 @@ using System.Linq;
 using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Data;
-using Nop.Core.Domain.Customers;
-using Nop.Core.Domain.Security;
+using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Stores;
-using Nop.Services.Security;
 
 namespace Nop.Services.Stores
 {
@@ -38,6 +36,7 @@ namespace Nop.Services.Stores
         private readonly IRepository<StoreMapping> _storeMappingRepository;
         private readonly IStoreContext _storeContext;
         private readonly ICacheManager _cacheManager;
+        private readonly CatalogSettings _catalogSettings;
 
         #endregion
 
@@ -49,12 +48,16 @@ namespace Nop.Services.Stores
         /// <param name="cacheManager">Cache manager</param>
         /// <param name="storeContext">Store context</param>
         /// <param name="storeMappingRepository">Store mapping repository</param>
-        public StoreMappingService(ICacheManager cacheManager, IStoreContext storeContext,
-            IRepository<StoreMapping> storeMappingRepository)
+        /// <param name="catalogSettings">Catalog settings</param>
+        public StoreMappingService(ICacheManager cacheManager, 
+            IStoreContext storeContext,
+            IRepository<StoreMapping> storeMappingRepository,
+            CatalogSettings catalogSettings)
         {
             this._cacheManager = cacheManager;
             this._storeContext = storeContext;
             this._storeMappingRepository = storeMappingRepository;
+            this._catalogSettings = catalogSettings;
         }
 
         #endregion
@@ -206,7 +209,7 @@ namespace Nop.Services.Stores
         /// <returns>true - authorized; otherwise, false</returns>
         public virtual bool Authorize<T>(T entity) where T : BaseEntity, IStoreMappingSupported
         {
-            return Authorize(entity, _storeContext.CurrentStore);
+            return Authorize(entity, _storeContext.CurrentStore.Id);
         }
 
         /// <summary>
@@ -214,22 +217,25 @@ namespace Nop.Services.Stores
         /// </summary>
         /// <typeparam name="T">Type</typeparam>
         /// <param name="entity">Entity</param>
-        /// <param name="store">Store</param>
+        /// <param name="storeId">Store identifier</param>
         /// <returns>true - authorized; otherwise, false</returns>
-        public virtual bool Authorize<T>(T entity, Store store) where T : BaseEntity, IStoreMappingSupported
+        public virtual bool Authorize<T>(T entity, int storeId) where T : BaseEntity, IStoreMappingSupported
         {
             if (entity == null)
                 return false;
 
-            if (store == null)
+            if (storeId == 0)
                 //return true if no store specified/found
+                return true;
+
+            if (_catalogSettings.IgnoreStoreLimitations)
                 return true;
 
             if (!entity.LimitedToStores)
                 return true;
 
-            foreach (var storeId in GetStoresIdsWithAccess(entity))
-                if (store.Id == storeId)
+            foreach (var storeIdWithAccess in GetStoresIdsWithAccess(entity))
+                if (storeId == storeIdWithAccess)
                     //yes, we have such permission
                     return true;
 

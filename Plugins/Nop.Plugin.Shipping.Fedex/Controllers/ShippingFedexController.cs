@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Text;
 using System.Web.Mvc;
-using Nop.Core;
 using Nop.Plugin.Shipping.Fedex.Domain;
 using Nop.Plugin.Shipping.Fedex.Models;
 using Nop.Services.Configuration;
@@ -11,7 +10,7 @@ using Nop.Web.Framework.Controllers;
 namespace Nop.Plugin.Shipping.Fedex.Controllers
 {
     [AdminAuthorize]
-    public class ShippingFedexController : Controller
+    public class ShippingFedexController : BasePluginController
     {
         private readonly FedexSettings _fedexSettings;
         private readonly ISettingService _settingService;
@@ -36,11 +35,6 @@ namespace Nop.Plugin.Shipping.Fedex.Controllers
             model.UseResidentialRates = _fedexSettings.UseResidentialRates;
             model.ApplyDiscounts = _fedexSettings.ApplyDiscounts;
             model.AdditionalHandlingCharge = _fedexSettings.AdditionalHandlingCharge;
-            model.Street = _fedexSettings.Street;
-            model.City = _fedexSettings.City;
-            model.StateOrProvinceCode = _fedexSettings.StateOrProvinceCode;
-            model.PostalCode = _fedexSettings.PostalCode;
-            model.CountryCode = _fedexSettings.CountryCode;
             model.PackingPackageVolume = _fedexSettings.PackingPackageVolume;
             model.PackingType = Convert.ToInt32(_fedexSettings.PackingType);
             model.PackingTypeValues = _fedexSettings.PackingType.ToSelectList();
@@ -86,11 +80,6 @@ namespace Nop.Plugin.Shipping.Fedex.Controllers
             _fedexSettings.UseResidentialRates = model.UseResidentialRates;
             _fedexSettings.ApplyDiscounts = model.ApplyDiscounts;
             _fedexSettings.AdditionalHandlingCharge = model.AdditionalHandlingCharge;
-            _fedexSettings.Street = model.Street;
-            _fedexSettings.City = model.City;
-            _fedexSettings.StateOrProvinceCode = CommonHelper.EnsureMaximumLength(model.StateOrProvinceCode, 2);
-            _fedexSettings.PostalCode = model.PostalCode;
-            _fedexSettings.CountryCode = model.CountryCode;
             _fedexSettings.PackingPackageVolume = model.PackingPackageVolume;
             _fedexSettings.PackingType = (PackingType)model.PackingType;
             _fedexSettings.PassDimensions = model.PassDimensions;

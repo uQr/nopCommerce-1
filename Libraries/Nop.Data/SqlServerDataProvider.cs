@@ -7,40 +7,14 @@ using System.Data.SqlClient;
 using System.IO;
 using System.Text;
 using System.Web.Hosting;
+using Nop.Core.Data;
 using Nop.Data.Initializers;
 
 namespace Nop.Data
 {
-    public class SqlServerDataProvider : BaseEfDataProvider
+    public class SqlServerDataProvider : IDataProvider
     {
-        /// <summary>
-        /// Get connection factory
-        /// </summary>
-        /// <returns>Connection factory</returns>
-        public override IDbConnectionFactory GetConnectionFactory()
-        {
-            return new SqlConnectionFactory();
-        }
-
-        /// <summary>
-        /// Set database initializer
-        /// </summary>
-        public override void SetDatabaseInitializer()
-        {
-            //pass some table names to ensure that we have nopCommerce 2.X installed
-            var tablesToValidate = new[] {"Customer", "Discount", "Order", "Product", "ShoppingCartItem"};
-
-            //custom commands (stored proedures, indexes)
-
-            var customCommands = new List<string>();
-            //use webHelper.MapPath instead of HostingEnvironment.MapPath which is not available in unit tests
-            customCommands.AddRange(ParseCommands(HostingEnvironment.MapPath("~/App_Data/SqlServer.Indexes.sql"), false));
-            //use webHelper.MapPath instead of HostingEnvironment.MapPath which is not available in unit tests
-            customCommands.AddRange(ParseCommands(HostingEnvironment.MapPath("~/App_Data/SqlServer.StoredProcedures.sql"), false));
-            
-            var initializer = new CreateTablesIfNotExist<NopObjectContext>(tablesToValidate, customCommands.ToArray());
-            Database.SetInitializer(initializer);
-        }
+        #region Utilities
 
         protected virtual string[] ParseCommands(string filePath, bool throwExceptionIfNonExists)
         {
@@ -58,7 +32,7 @@ namespace Nop.Data
             using (var reader = new StreamReader(stream))
             {
                 var statement = "";
-                while ((statement = readNextStatementFromStream(reader)) != null)
+                while ((statement = ReadNextStatementFromStream(reader)) != null)
                 {
                     statements.Add(statement);
                 }
@@ -67,7 +41,7 @@ namespace Nop.Data
             return statements.ToArray();
         }
 
-        protected virtual string readNextStatementFromStream(StreamReader reader)
+        protected virtual string ReadNextStatementFromStream(StreamReader reader)
         {
             var sb = new StringBuilder();
 
@@ -93,10 +67,54 @@ namespace Nop.Data
             return sb.ToString();
         }
 
+        #endregion
+
+        #region Methods
+
+        /// <summary>
+        /// Initialize connection factory
+        /// </summary>
+        public virtual void InitConnectionFactory()
+        {
+            var connectionFactory = new SqlConnectionFactory();
+            //TODO fix compilation warning (below)
+            #pragma warning disable 0618
+            Database.DefaultConnectionFactory = connectionFactory;
+        }
+
+        /// <summary>
+        /// Initialize database
+        /// </summary>
+        public virtual void InitDatabase()
+        {
+            InitConnectionFactory();
+            SetDatabaseInitializer();
+        }
+
+        /// <summary>
+        /// Set database initializer
+        /// </summary>
+        public virtual void SetDatabaseInitializer()
+        {
+            //pass some table names to ensure that we have nopCommerce 2.X installed
+            var tablesToValidate = new[] { "Customer", "Discount", "Order", "Product", "ShoppingCartItem" };
+
+            //custom commands (stored proedures, indexes)
+
+            var customCommands = new List<string>();
+            //use webHelper.MapPath instead of HostingEnvironment.MapPath which is not available in unit tests
+            customCommands.AddRange(ParseCommands(HostingEnvironment.MapPath("~/App_Data/SqlServer.Indexes.sql"), false));
+            //use webHelper.MapPath instead of HostingEnvironment.MapPath which is not available in unit tests
+            customCommands.AddRange(ParseCommands(HostingEnvironment.MapPath("~/App_Data/SqlServer.StoredProcedures.sql"), false));
+
+            var initializer = new CreateTablesIfNotExist<NopObjectContext>(tablesToValidate, customCommands.ToArray());
+            Database.SetInitializer(initializer);
+        }
+
         /// <summary>
         /// A value indicating whether this data provider supports stored procedures
         /// </summary>
-        public override bool StoredProceduredSupported
+        public virtual bool StoredProceduredSupported
         {
             get { return true; }
         }
@@ -105,9 +123,11 @@ namespace Nop.Data
         /// Gets a support database parameter object (used by stored procedures)
         /// </summary>
         /// <returns>Parameter</returns>
-        public override DbParameter GetParameter()
+        public virtual DbParameter GetParameter()
         {
             return new SqlParameter();
         }
+
+        #endregion
     }
 }

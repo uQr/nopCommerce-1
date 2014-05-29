@@ -60,12 +60,17 @@ namespace Nop.Services.Catalog
         /// <param name="manufacturerId">Manufacturer identifier; 0 to load all records</param>
         /// <param name="storeId">Store identifier; 0 to load all records</param>
         /// <param name="vendorId">Vendor identifier; 0 to load all records</param>
+        /// <param name="warehouseId">Warehouse identifier; 0 to load all records</param>
+        /// <param name="parentGroupedProductId">Parent product identifier (used with grouped products); 0 to load all records</param>
+        /// <param name="productType">Product type; 0 to load all records</param>
+        /// <param name="visibleIndividuallyOnly">A values indicating whether to load only products marked as "visible individually"; "false" to load all records; "true" to load "visible individually" only</param>
         /// <param name="featuredProducts">A value indicating whether loaded products are marked as featured (relates only to categories and manufacturers). 0 to load featured products only, 1 to load not featured products only, null to load all products</param>
         /// <param name="priceMin">Minimum price; null to load all records</param>
         /// <param name="priceMax">Maximum price; null to load all records</param>
         /// <param name="productTagId">Product tag identifier; 0 to load all records</param>
         /// <param name="keywords">Keywords</param>
         /// <param name="searchDescriptions">A value indicating whether to search by a specified "keyword" in product descriptions</param>
+        /// <param name="searchSku">A value indicating whether to search by a specified "keyword" in product SKU</param>
         /// <param name="searchProductTags">A value indicating whether to search by a specified "keyword" in product tags</param>
         /// <param name="languageId">Language identifier (search for text searching)</param>
         /// <param name="filteredSpecs">Filtered product specification identifiers</param>
@@ -74,17 +79,22 @@ namespace Nop.Services.Catalog
         /// <returns>Products</returns>
         IPagedList<Product> SearchProducts(
             int pageIndex = 0,
-            int pageSize = 2147483647,  //Int32.MaxValue
+            int pageSize = int.MaxValue,
             IList<int> categoryIds = null,
             int manufacturerId = 0,
             int storeId = 0,
             int vendorId = 0,
+            int warehouseId = 0,
+            int parentGroupedProductId = 0,
+            ProductType? productType = null,
+            bool visibleIndividuallyOnly = false,
             bool? featuredProducts = null,
             decimal? priceMin = null,
             decimal? priceMax = null,
             int productTagId = 0,
             string keywords = null,
             bool searchDescriptions = false,
+            bool searchSku = true,
             bool searchProductTags = false,
             int languageId = 0,
             IList<int> filteredSpecs = null,
@@ -102,12 +112,17 @@ namespace Nop.Services.Catalog
         /// <param name="manufacturerId">Manufacturer identifier; 0 to load all records</param>
         /// <param name="storeId">Store identifier; 0 to load all records</param>
         /// <param name="vendorId">Vendor identifier; 0 to load all records</param>
+        /// <param name="warehouseId">Warehouse identifier; 0 to load all records</param>
+        /// <param name="parentGroupedProductId">Parent product identifier (used with grouped products); 0 to load all records</param>
+        /// <param name="productType">Product type; 0 to load all records</param>
+        /// <param name="visibleIndividuallyOnly">A values indicating whether to load only products marked as "visible individually"; "false" to load all records; "true" to load "visible individually" only</param>
         /// <param name="featuredProducts">A value indicating whether loaded products are marked as featured (relates only to categories and manufacturers). 0 to load featured products only, 1 to load not featured products only, null to load all products</param>
         /// <param name="priceMin">Minimum price; null to load all records</param>
         /// <param name="priceMax">Maximum price; null to load all records</param>
         /// <param name="productTagId">Product tag identifier; 0 to load all records</param>
         /// <param name="keywords">Keywords</param>
         /// <param name="searchDescriptions">A value indicating whether to search by a specified "keyword" in product descriptions</param>
+        /// <param name="searchSku">A value indicating whether to search by a specified "keyword" in product SKU</param>
         /// <param name="searchProductTags">A value indicating whether to search by a specified "keyword" in product tags</param>
         /// <param name="languageId">Language identifier (search for text searching)</param>
         /// <param name="filteredSpecs">Filtered product specification identifiers</param>
@@ -118,17 +133,22 @@ namespace Nop.Services.Catalog
             out IList<int> filterableSpecificationAttributeOptionIds,
             bool loadFilterableSpecificationAttributeOptionIds = false,
             int pageIndex = 0,
-            int pageSize = 2147483647,  //Int32.MaxValue
+            int pageSize = int.MaxValue,
             IList<int> categoryIds = null,
             int manufacturerId = 0,
             int storeId = 0,
             int vendorId = 0,
+            int warehouseId = 0,
+            int parentGroupedProductId = 0,
+            ProductType? productType = null,
+            bool visibleIndividuallyOnly = false,
             bool? featuredProducts = null,
             decimal? priceMin = null,
             decimal? priceMax = null,
             int productTagId = 0,
             string keywords = null,
             bool searchDescriptions = false,
+            bool searchSku = true,
             bool searchProductTags = false, 
             int languageId = 0,
             IList<int> filteredSpecs = null, 
@@ -141,103 +161,45 @@ namespace Nop.Services.Catalog
         /// <param name="product">Product</param>
         void UpdateProductReviewTotals(Product product);
 
-        #endregion
-
-        #region Product variants
-        
         /// <summary>
-        /// Get low stock product variants
+        /// Get low stock products
         /// </summary>
         /// <param name="vendorId">Vendor identifier; 0 to load all records</param>
-        /// <returns>Result</returns>
-        IList<ProductVariant> GetLowStockProductVariants(int vendorId);
+        /// <param name="products">Low stock products</param>
+        /// <param name="combinations">Low stock  attribute combinations</param>
+        void GetLowStockProducts(int vendorId,
+            out IList<Product> products,
+            out IList<ProductVariantAttributeCombination> combinations);
 
         /// <summary>
-        /// Gets a product variant
-        /// </summary>
-        /// <param name="productVariantId">Product variant identifier</param>
-        /// <returns>Product variant</returns>
-        ProductVariant GetProductVariantById(int productVariantId);
-
-        /// <summary>
-        /// Get product variants by product identifiers
-        /// </summary>
-        /// <param name="productIds">Product identifiers</param>
-        /// <param name="showHidden">A value indicating whether to show hidden records</param>
-        /// <returns>Product variants</returns>
-        IList<ProductVariant> GetProductVariantsByProductIds(int[] productIds, bool showHidden = false);
-
-        /// <summary>
-        /// Gets a product variant by SKU
+        /// Gets a product by SKU
         /// </summary>
         /// <param name="sku">SKU</param>
-        /// <returns>Product variant</returns>
-        ProductVariant GetProductVariantBySku(string sku);
-        
-        /// <summary>
-        /// Inserts a product variant
-        /// </summary>
-        /// <param name="productVariant">The product variant</param>
-        void InsertProductVariant(ProductVariant productVariant);
-
-        /// <summary>
-        /// Updates the product variant
-        /// </summary>
-        /// <param name="productVariant">The product variant</param>
-        void UpdateProductVariant(ProductVariant productVariant);
-
-        /// <summary>
-        /// Gets product variants by product identifier
-        /// </summary>
-        /// <param name="productId">The product identifier</param>
-        /// <param name="showHidden">A value indicating whether to show hidden records</param>
-        /// <returns>Product variant collection</returns>
-        IList<ProductVariant> GetProductVariantsByProductId(int productId, bool showHidden = false);
-
-        /// <summary>
-        /// Delete a product variant
-        /// </summary>
-        /// <param name="productVariant">Product variant</param>
-        void DeleteProductVariant(ProductVariant productVariant);
+        /// <returns>Product</returns>
+        Product GetProductBySku(string sku);
         
         /// <summary>
         /// Adjusts inventory
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
-        /// <param name="decrease">A value indicating whether to increase or descrease product variant stock quantity</param>
+        /// <param name="product">Product</param>
+        /// <param name="decrease">A value indicating whether to increase or descrease product stock quantity</param>
         /// <param name="quantity">Quantity</param>
         /// <param name="attributesXml">Attributes in XML format</param>
-        void AdjustInventory(ProductVariant productVariant, bool decrease,
+        void AdjustInventory(Product product, bool decrease,
             int quantity, string attributesXml);
-
-        /// <summary>
-        /// Search product variants
-        /// </summary>
-        /// <param name="categoryId">Category identifier; 0 to load all records</param>
-        /// <param name="manufacturerId">Manufacturer identifier; 0 to load all records</param>
-        /// <param name="vendorId">Vendor identifier; 0 to load all records</param>
-        /// <param name="keywords">Keywords</param>
-        /// <param name="searchDescriptions">A value indicating whether to search in descriptions</param>
-        /// <param name="pageIndex">Page index</param>
-        /// <param name="pageSize">Page size</param>
-        /// <param name="showHidden">A value indicating whether to show hidden records</param>
-        /// <returns>Product variants</returns>
-        IPagedList<ProductVariant> SearchProductVariants(int categoryId,
-            int manufacturerId, int vendorId, string keywords, bool searchDescriptions,
-            int pageIndex, int pageSize, bool showHidden = false);
 
         /// <summary>
         /// Update HasTierPrices property (used for performance optimization)
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
-        void UpdateHasTierPricesProperty(ProductVariant productVariant);
+        /// <param name="product">Product</param>
+        void UpdateHasTierPricesProperty(Product product);
 
 
         /// <summary>
         /// Update HasDiscountsApplied property (used for performance optimization)
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
-        void UpdateHasDiscountsApplied(ProductVariant productVariant);
+        /// <param name="product">Product</param>
+        void UpdateHasDiscountsApplied(Product product);
 
         #endregion
 
@@ -389,7 +351,7 @@ namespace Nop.Services.Catalog
         #endregion
 
         #region Product reviews
-        
+
         /// <summary>
         /// Gets all product reviews
         /// </summary>
@@ -397,9 +359,11 @@ namespace Nop.Services.Catalog
         /// <param name="approved">A value indicating whether to content is approved; null to load all records</param> 
         /// <param name="fromUtc">Item creation from; null to load all records</param>
         /// <param name="toUtc">Item item creation to; null to load all records</param>
+        /// <param name="message">Search title or review text; null to load all records</param>
         /// <returns>Reviews</returns>
         IList<ProductReview> GetAllProductReviews(int customerId, bool? approved,
-            DateTime? fromUtc = null, DateTime? toUtc = null);
+            DateTime? fromUtc = null, DateTime? toUtc = null,
+            string message = null);
 
         /// <summary>
         /// Gets product review

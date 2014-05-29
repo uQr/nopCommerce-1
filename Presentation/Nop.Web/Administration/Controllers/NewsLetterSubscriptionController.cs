@@ -5,35 +5,32 @@ using System.Text;
 using System.Web.Mvc;
 using Nop.Admin.Models.Messages;
 using Nop.Core;
-using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Messages;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Security;
-using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-	public partial class NewsLetterSubscriptionController : BaseNopController
+	public partial class NewsLetterSubscriptionController : BaseAdminController
 	{
 		private readonly INewsLetterSubscriptionService _newsLetterSubscriptionService;
 		private readonly IDateTimeHelper _dateTimeHelper;
         private readonly ILocalizationService _localizationService;
         private readonly IPermissionService _permissionService;
-        private readonly AdminAreaSettings _adminAreaSettings;
 
 		public NewsLetterSubscriptionController(INewsLetterSubscriptionService newsLetterSubscriptionService,
-			IDateTimeHelper dateTimeHelper,ILocalizationService localizationService,
-            IPermissionService permissionService, AdminAreaSettings adminAreaSettings)
+			IDateTimeHelper dateTimeHelper,
+            ILocalizationService localizationService,
+            IPermissionService permissionService)
 		{
 			this._newsLetterSubscriptionService = newsLetterSubscriptionService;
 			this._dateTimeHelper = dateTimeHelper;
             this._localizationService = localizationService;
             this._permissionService = permissionService;
-            this._adminAreaSettings = adminAreaSettings;
 		}
 
 		public ActionResult Index()
@@ -46,24 +43,12 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNewsletterSubscribers))
                 return AccessDeniedView();
 
-            var newsletterSubscriptions = _newsLetterSubscriptionService.GetAllNewsLetterSubscriptions(String.Empty, 0, _adminAreaSettings.GridPageSize, true);
-			var model = new NewsLetterSubscriptionListModel();
-
-			model.NewsLetterSubscriptions = new GridModel<NewsLetterSubscriptionModel>
-			{
-				Data = newsletterSubscriptions.Select(x => 
-				{
-					var m = x.ToModel();
-					m.CreatedOn = _dateTimeHelper.ConvertToUserTime(x.CreatedOnUtc, DateTimeKind.Utc);
-					return m;
-				}),
-				Total = newsletterSubscriptions.TotalCount
-			};
+            var model = new NewsLetterSubscriptionListModel();
 			return View(model);
 		}
 
-		[HttpPost, GridAction(EnableCustomBinding = true)]
-		public ActionResult SubscriptionList(GridCommand command, NewsLetterSubscriptionListModel model)
+		[HttpPost]
+		public ActionResult SubscriptionList(DataSourceRequest command, NewsLetterSubscriptionListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNewsletterSubscribers))
                 return AccessDeniedView();
@@ -71,7 +56,7 @@ namespace Nop.Admin.Controllers
             var newsletterSubscriptions = _newsLetterSubscriptionService.GetAllNewsLetterSubscriptions(model.SearchEmail, 
                 command.Page - 1, command.PageSize, true);
 
-            var gridModel = new GridModel<NewsLetterSubscriptionModel>
+            var gridModel = new DataSourceResult
             {
                 Data = newsletterSubscriptions.Select(x =>
 				{
@@ -81,23 +66,19 @@ namespace Nop.Admin.Controllers
 				}),
                 Total = newsletterSubscriptions.TotalCount
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
 		}
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult SubscriptionUpdate(NewsLetterSubscriptionModel model, GridCommand command)
+        [HttpPost]
+        public ActionResult SubscriptionUpdate([Bind(Exclude = "CreatedOn")] NewsLetterSubscriptionModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNewsletterSubscribers))
                 return AccessDeniedView();
-            
+
             if (!ModelState.IsValid)
             {
-                //display the first model error
-                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
-                return Content(modelStateErrors.FirstOrDefault());
+                return Json(new DataSourceResult() { Errors = ModelState.SerializeErrors() });
             }
 
             var subscription = _newsLetterSubscriptionService.GetNewsLetterSubscriptionById(model.Id);
@@ -105,11 +86,11 @@ namespace Nop.Admin.Controllers
             subscription.Active = model.Active;
             _newsLetterSubscriptionService.UpdateNewsLetterSubscription(subscription);
 
-            return SubscriptionList(command, new NewsLetterSubscriptionListModel());
+            return new NullJsonResult();
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult SubscriptionDelete(int id, GridCommand command)
+        [HttpPost]
+        public ActionResult SubscriptionDelete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNewsletterSubscribers))
                 return AccessDeniedView();
@@ -119,7 +100,7 @@ namespace Nop.Admin.Controllers
                 throw new ArgumentException("No subscription found with the specified id");
             _newsLetterSubscriptionService.DeleteNewsLetterSubscription(subscription);
 
-            return SubscriptionList(command, new NewsLetterSubscriptionListModel());
+            return new NullJsonResult();
         }
 
 		public ActionResult ExportCsv(NewsLetterSubscriptionListModel model)

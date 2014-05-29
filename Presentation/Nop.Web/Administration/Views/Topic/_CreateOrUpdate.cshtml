@@ -1,7 +1,4 @@
 ﻿@model TopicModel
-
-@using Telerik.Web.Mvc.UI;
-
 @Html.ValidationSummary(false)
 
 <script type="text/javascript">
@@ -19,15 +16,55 @@
     }       
 </script>
 @Html.HiddenFor(model => model.Id)
-@Html.Telerik().TabStrip().Name("topic-edit").Items(x =>
-{
-    x.Add().Text(T("Admin.ContentManagement.Topics.Info").Text).Content(TabInfo().ToHtmlString()).Selected(true);
-    x.Add().Text(T("Admin.Common.SEO").Text).Content(TabSeo().ToHtmlString());
-    x.Add().Text(T("Admin.ContentManagement.Topics.Stores").Text).Content(TabStores().ToHtmlString());
 
-    //generate an event
-    EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "topic-edit"));
-})
+<div id="topic-edit">
+    <ul>
+        <li @Html.RenderSelectedTabIndex(0, GetSelectedTabIndex())>
+            @T("Admin.ContentManagement.Topics.Info")
+        </li>
+        <li @Html.RenderSelectedTabIndex(1, GetSelectedTabIndex())>
+            @T("Admin.Common.SEO")
+        </li>
+        <li @Html.RenderSelectedTabIndex(2, GetSelectedTabIndex())>
+            @T("Admin.ContentManagement.Topics.Stores")
+        </li>
+    </ul>
+    <div>
+        @TabInfo()
+    </div>
+    <div>
+        @TabSeo()
+    </div>
+    <div>
+        @TabStores()
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $("#topic-edit").kendoTabStrip({
+            animation: {
+                open: {
+                    effects: "fadeIn"
+                }
+            },
+            select: tabstrip_on_tab_select
+        });
+    });
+</script>
+
+@{
+    //custom tabs
+    var eventMessage = new AdminTabStripCreated(this.Html, "topic-edit");
+    EngineContext.Current.Resolve<IEventPublisher>().Publish(eventMessage);
+    foreach (var eventBlock in eventMessage.BlocksToRender)
+    {
+        @eventBlock
+    }
+}
+
+@*save selected tab index*@
+<input type="hidden" id="selected-tab-index" name="selected-tab-index" value="@(GetSelectedTabIndex())">
+
 @helper TabInfo()
     { 
     <table class="adminContent">
@@ -86,7 +123,7 @@
                             @Html.NopLabelFor(model => model.Locales[item].Title):
                         </td>
                         <td class="adminData">
-                            @Html.EditorFor(model => Model.Locales[item].Title)
+                            @Html.EditorFor(model => model.Locales[item].Title)
                             @Html.ValidationMessageFor(model => model.Locales[item].Title)
                         </td>
                     </tr>
@@ -159,6 +196,15 @@
                            @Html.ValidationMessageFor(model => model.Locales[item].MetaTitle)
                        </td>
                    </tr>
+                <tr>
+                    <td class="adminTitle">
+                        @Html.NopLabelFor(model => model.Locales[item].SeName):
+                    </td>
+                    <td class="adminData">
+                        @Html.EditorFor(model => model.Locales[item].SeName)
+                        @Html.ValidationMessageFor(model => model.Locales[item].SeName)
+                    </td>
+                </tr>
                    <tr>
                        <td colspan="2">
                            @Html.HiddenFor(model => model.Locales[item].LanguageId)
@@ -194,6 +240,15 @@
                            @Html.ValidationMessageFor(model => model.MetaTitle)
                        </td>
                    </tr>
+                    <tr>
+                        <td class="adminTitle">
+                            @Html.NopLabelFor(model => model.SeName):
+                        </td>
+                        <td class="adminData">
+                            @Html.EditorFor(x => x.SeName)
+                            @Html.ValidationMessageFor(model => model.SeName)
+                        </td>
+                    </tr>
                </table>))
 }
 

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Nop.Core.Domain;
-using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Directory;
@@ -14,7 +12,6 @@ using Nop.Services.Catalog;
 using Nop.Services.ExportImport;
 using Nop.Services.Media;
 using Nop.Services.Messages;
-using Nop.Tests;
 using NUnit.Framework;
 using Rhino.Mocks;
 
@@ -23,24 +20,24 @@ namespace Nop.Services.Tests.ExportImport
     [TestFixture]
     public class ExportManagerTests : ServiceTest
     {
-        ICategoryService _categoryService;
-        IManufacturerService _manufacturerService;
-        IProductService _productService;
-        IPictureService _pictureService;
-        INewsLetterSubscriptionService _newsLetterSubscriptionService;
-        IExportManager _exportManager;
+        private ICategoryService _categoryService;
+        private IManufacturerService _manufacturerService;
+        private IProductAttributeService _productAttributeService;
+        private IPictureService _pictureService;
+        private INewsLetterSubscriptionService _newsLetterSubscriptionService;
+        private IExportManager _exportManager;
 
         [SetUp]
         public new void SetUp()
         {
             _categoryService = MockRepository.GenerateMock<ICategoryService>();
             _manufacturerService = MockRepository.GenerateMock<IManufacturerService>();
-            _productService = MockRepository.GenerateMock<IProductService>();
+            _productAttributeService = MockRepository.GenerateMock<IProductAttributeService>();
             _pictureService = MockRepository.GenerateMock<IPictureService>();
             _newsLetterSubscriptionService = MockRepository.GenerateMock<INewsLetterSubscriptionService>();
 
             _exportManager = new ExportManager(_categoryService,
-                _manufacturerService, _productService, _pictureService, _newsLetterSubscriptionService);
+                _manufacturerService, _productAttributeService, _pictureService, _newsLetterSubscriptionService);
         }
 
         //[Test]

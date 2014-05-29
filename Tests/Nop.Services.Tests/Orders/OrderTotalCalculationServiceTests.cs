@@ -10,7 +10,6 @@ using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Shipping;
 using Nop.Core.Domain.Stores;
 using Nop.Core.Domain.Tax;
-using Nop.Core.Infrastructure;
 using Nop.Core.Plugins;
 using Nop.Services.Catalog;
 using Nop.Services.Common;
@@ -31,30 +30,33 @@ namespace Nop.Services.Tests.Orders
     [TestFixture]
     public class OrderTotalCalculationServiceTests : ServiceTest
     {
-        IWorkContext _workContext;
-        IStoreContext _storeContext;
-        ITaxService _taxService;
-        IShippingService _shippingService;
-        IPaymentService _paymentService;
-        ICheckoutAttributeParser _checkoutAttributeParser;
-        IDiscountService _discountService;
-        IGiftCardService _giftCardService;
-        IGenericAttributeService _genericAttributeService;
-        TaxSettings _taxSettings;
-        RewardPointsSettings _rewardPointsSettings;
-        ICategoryService _categoryService;
-        IProductAttributeParser _productAttributeParser;
-        IPriceCalculationService _priceCalcService;
-        IOrderTotalCalculationService _orderTotalCalcService;
-        IAddressService _addressService;
-        ShippingSettings _shippingSettings;
-        ILocalizationService _localizationService;
-        ILogger _logger;
-        IRepository<ShippingMethod> _shippingMethodRepository;
-        ShoppingCartSettings _shoppingCartSettings;
-        CatalogSettings _catalogSettings;
-        IEventPublisher _eventPublisher;
-        Store _store;
+        private IWorkContext _workContext;
+        private IStoreContext _storeContext;
+        private ITaxService _taxService;
+        private IShippingService _shippingService;
+        private IPaymentService _paymentService;
+        private ICheckoutAttributeParser _checkoutAttributeParser;
+        private IDiscountService _discountService;
+        private IGiftCardService _giftCardService;
+        private IGenericAttributeService _genericAttributeService;
+        private TaxSettings _taxSettings;
+        private RewardPointsSettings _rewardPointsSettings;
+        private ICategoryService _categoryService;
+        private IProductAttributeParser _productAttributeParser;
+        private IPriceCalculationService _priceCalcService;
+        private IOrderTotalCalculationService _orderTotalCalcService;
+        private IAddressService _addressService;
+        private ShippingSettings _shippingSettings;
+        private ILocalizationService _localizationService;
+        private ILogger _logger;
+        private IRepository<ShippingMethod> _shippingMethodRepository;
+        private IRepository<DeliveryDate> _deliveryDateRepository;
+        private IRepository<Warehouse> _warehouseRepository;
+        private ShoppingCartSettings _shoppingCartSettings;
+        private CatalogSettings _catalogSettings;
+        private IEventPublisher _eventPublisher;
+        private Store _store;
+        private IProductService _productService;
 
         [SetUp]
         public new void SetUp()
@@ -64,7 +66,8 @@ namespace Nop.Services.Tests.Orders
             _store = new Store() { Id = 1 };
             _storeContext = MockRepository.GenerateMock<IStoreContext>();
             _storeContext.Expect(x => x.CurrentStore).Return(_store);
-            
+
+            _productService = MockRepository.GenerateMock<IProductService>();
 
             var pluginFinder = new PluginFinder();
             var cacheManager = new NopNullCache();
@@ -77,8 +80,9 @@ namespace Nop.Services.Tests.Orders
             _shoppingCartSettings = new ShoppingCartSettings();
             _catalogSettings = new CatalogSettings();
 
-            _priceCalcService = new PriceCalculationService(_workContext, _discountService,
-                _categoryService, _productAttributeParser, _shoppingCartSettings, _catalogSettings);
+            _priceCalcService = new PriceCalculationService(_workContext, _storeContext,
+                _discountService, _categoryService, _productAttributeParser,
+                _productService, _shoppingCartSettings, _catalogSettings);
 
             _eventPublisher = MockRepository.GenerateMock<IEventPublisher>();
             _eventPublisher.Expect(x => x.Publish(Arg<object>.Is.Anything));
@@ -90,15 +94,25 @@ namespace Nop.Services.Tests.Orders
             _shippingSettings.ActiveShippingRateComputationMethodSystemNames = new List<string>();
             _shippingSettings.ActiveShippingRateComputationMethodSystemNames.Add("FixedRateTestShippingRateComputationMethod");
             _shippingMethodRepository = MockRepository.GenerateMock<IRepository<ShippingMethod>>();
+            _deliveryDateRepository = MockRepository.GenerateMock<IRepository<DeliveryDate>>();
+            _warehouseRepository = MockRepository.GenerateMock<IRepository<Warehouse>>();
             _logger = new NullLogger();
             _shippingService = new ShippingService(_shippingMethodRepository,
+                _deliveryDateRepository,
+                _warehouseRepository,
                 _logger,
+                _productService,
                 _productAttributeParser,
                 _checkoutAttributeParser,
                 _genericAttributeService,
                 _localizationService,
-                _shippingSettings, pluginFinder, 
-                _eventPublisher, _shoppingCartSettings);
+                _addressService,
+                _shippingSettings,
+                pluginFinder, 
+                _storeContext,
+                _eventPublisher, 
+                _shoppingCartSettings,
+                cacheManager);
             
 
             _paymentService = MockRepository.GenerateMock<IPaymentService>();
@@ -133,44 +147,32 @@ namespace Nop.Services.Tests.Orders
             Customer customer = new Customer();
 
             //shopping cart
-            var productVariant1 = new ProductVariant
+            var product1 = new Product
             {
                 Id = 1,
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 Price = 12.34M,
                 CustomerEntersPrice = false,
                 Published = true,
-                Product = new Product()
-                {
-                    Id = 1,
-                    Name = "Product name 1",
-                    Published = true
-                }
             };
             var sci1 = new ShoppingCartItem()
             {
-                 ProductVariant = productVariant1,
-                 ProductVariantId = productVariant1.Id,
+                 Product = product1,
+                 ProductId = product1.Id,
                  Quantity = 2,
             };
-            var productVariant2 = new ProductVariant
+            var product2 = new Product
             {
                 Id = 2,
-                Name = "Product variant name 2",
+                Name = "Product name 2",
                 Price = 21.57M,
                 CustomerEntersPrice = false,
                 Published = true,
-                Product = new Product()
-                {
-                    Id = 2,
-                    Name = "Product name 2",
-                    Published = true
-                }
             };
             var sci2 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant2,
-                ProductVariantId = productVariant2.Id,
+                Product = product2,
+                ProductId = product2.Id,
                 Quantity = 3
             };
 
@@ -205,44 +207,32 @@ namespace Nop.Services.Tests.Orders
             Customer customer = new Customer();
 
             //shopping cart
-            var productVariant1 = new ProductVariant
+            var product1 = new Product
             {
                 Id = 1,
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 Price = 12.34M,
                 CustomerEntersPrice = false,
                 Published = true,
-                Product = new Product()
-                {
-                    Id = 1,
-                    Name = "Product name 1",
-                    Published = true
-                }
             };
             var sci1 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant1,
-                ProductVariantId = productVariant1.Id,
+                Product= product1,
+                ProductId = product1.Id,
                 Quantity = 2,
             };
-            var productVariant2 = new ProductVariant
+            var product2 = new Product
             {
                 Id = 2,
-                Name = "Product variant name 2",
+                Name = "Product name 2",
                 Price = 21.57M,
                 CustomerEntersPrice = false,
                 Published = true,
-                Product = new Product()
-                {
-                    Id = 2,
-                    Name = "Product name 2",
-                    Published = true
-                }
             };
             var sci2 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant2,
-                ProductVariantId = productVariant2.Id,
+                Product = product2,
+                ProductId = product2.Id,
                 Quantity = 3
             };
 
@@ -277,44 +267,32 @@ namespace Nop.Services.Tests.Orders
             Customer customer = new Customer();
 
             //shopping cart
-            var productVariant1 = new ProductVariant
+            var product1 = new Product
             {
                 Id = 1,
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 Price = 12.34M,
                 CustomerEntersPrice = false,
                 Published = true,
-                Product = new Product()
-                {
-                    Id = 1,
-                    Name = "Product name 1",
-                    Published = true
-                }
             };
             var sci1 = new ShoppingCartItem()
             {
-                 ProductVariant = productVariant1,
-                 ProductVariantId = productVariant1.Id,
+                 Product = product1,
+                 ProductId = product1.Id,
                  Quantity = 2,
             };
-            var productVariant2 = new ProductVariant
+            var product2 = new Product
             {
                 Id = 2,
-                Name = "Product variant name 2",
+                Name = "Product name 2",
                 Price = 21.57M,
                 CustomerEntersPrice = false,
                 Published = true,
-                Product = new Product()
-                {
-                    Id = 2,
-                    Name = "Product name 2",
-                    Published = true
-                }
             };
             var sci2 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant2,
-                ProductVariantId = productVariant2.Id,
+                Product = product2,
+                ProductId = product2.Id,
                 Quantity = 3
             };
 
@@ -361,44 +339,32 @@ namespace Nop.Services.Tests.Orders
             Customer customer = new Customer();
 
             //shopping cart
-            var productVariant1 = new ProductVariant
+            var product1 = new Product
             {
                 Id = 1,
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 Price = 12.34M,
                 CustomerEntersPrice = false,
                 Published = true,
-                Product = new Product()
-                {
-                    Id = 1,
-                    Name = "Product name 1",
-                    Published = true
-                }
             };
             var sci1 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant1,
-                ProductVariantId = productVariant1.Id,
+                Product= product1,
+                ProductId = product1.Id,
                 Quantity = 2,
             };
-            var productVariant2 = new ProductVariant
+            var product2 = new Product
             {
                 Id = 2,
-                Name = "Product variant name 2",
+                Name = "Product name 2",
                 Price = 21.57M,
                 CustomerEntersPrice = false,
                 Published = true,
-                Product = new Product()
-                {
-                    Id = 2,
-                    Name = "Product name 2",
-                    Published = true
-                }
             };
             var sci2 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant2,
-                ProductVariantId = productVariant2.Id,
+                Product = product2,
+                ProductId = product2.Id,
                 Quantity = 3
             };
 
@@ -448,7 +414,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 3,
-                ProductVariant = new ProductVariant()
+                Product= new Product()
                 {
                     Weight = 1.5M,
                     Height = 2.5M,
@@ -462,7 +428,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 4,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Weight = 11.5M,
                     Height = 12.5M,
@@ -478,7 +444,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 5,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Weight = 11.5M,
                     Height = 12.5M,
@@ -500,7 +466,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 3,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Weight = 1.5M,
                     Height = 2.5M,
@@ -514,7 +480,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 4,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Weight = 11.5M,
                     Height = 12.5M,
@@ -539,7 +505,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 3,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Weight = 1.5M,
                     Height = 2.5M,
@@ -553,7 +519,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 4,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Weight = 11.5M,
                     Height = 12.5M,
@@ -578,7 +544,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 3,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Weight = 1.5M,
                     Height = 2.5M,
@@ -592,7 +558,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 4,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Weight = 11.5M,
                     Height = 12.5M,
@@ -629,7 +595,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 3,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 1,
                     Weight = 1.5M,
@@ -644,7 +610,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 4,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 2,
                     Weight = 11.5M,
@@ -661,7 +627,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 5,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 3,
                     Weight = 11.5M,
@@ -699,7 +665,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 3,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 1,
                     Weight = 1.5M,
@@ -714,7 +680,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 4,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 2,
                     Weight = 11.5M,
@@ -731,7 +697,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 5,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 3,
                     Weight = 11.5M,
@@ -768,7 +734,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 3,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 1,
                     Weight = 1.5M,
@@ -783,7 +749,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 4,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 2,
                     Weight = 11.5M,
@@ -800,7 +766,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 5,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 3,
                     Weight = 11.5M,
@@ -852,7 +818,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 3,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 1,
                     Weight = 1.5M,
@@ -867,7 +833,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 4,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 2,
                     Weight = 11.5M,
@@ -884,7 +850,7 @@ namespace Nop.Services.Tests.Orders
             {
                 AttributesXml = "",
                 Quantity = 5,
-                ProductVariant = new ProductVariant()
+                Product = new Product()
                 {
                     Id = 3,
                     Weight = 11.5M,
@@ -938,44 +904,32 @@ namespace Nop.Services.Tests.Orders
             };
 
             //shopping cart
-            var productVariant1 = new ProductVariant
+            var product1 = new Product
             {
                 Id = 1,
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 Price = 10M,
                 Published = true,
                 IsShipEnabled = true,
-                Product = new Product()
-                {
-                    Id = 1,
-                    Name = "Product name 1",
-                    Published = true
-                }
             };
             var sci1 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant1,
-                ProductVariantId = productVariant1.Id,
+                Product = product1,
+                ProductId = product1.Id,
                 Quantity = 2,
             };
-            var productVariant2 = new ProductVariant
+            var product2 = new Product
             {
                 Id = 2,
-                Name = "Product variant name 2",
+                Name = "Product name 2",
                 Price = 12M,
                 Published = true,
                 IsShipEnabled = true,
-                Product = new Product()
-                {
-                    Id = 2,
-                    Name = "Product name 2",
-                    Published = true
-                }
             };
             var sci2 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant2,
-                ProductVariantId = productVariant2.Id,
+                Product = product2,
+                ProductId = product2.Id,
                 Quantity = 3
             };
 
@@ -1050,44 +1004,32 @@ namespace Nop.Services.Tests.Orders
             };
 
             //shopping cart
-            var productVariant1 = new ProductVariant
+            var product1 = new Product
             {
                 Id = 1,
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 Price = 10M,
                 Published = true,
                 IsShipEnabled = false,
-                Product = new Product()
-                {
-                    Id = 1,
-                    Name = "Product name 1",
-                    Published = true
-                }
             };
             var sci1 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant1,
-                ProductVariantId = productVariant1.Id,
+                Product = product1,
+                ProductId = product1.Id,
                 Quantity = 2,
             };
-            var productVariant2 = new ProductVariant
+            var product2 = new Product
             {
                 Id = 2,
-                Name = "Product variant name 2",
+                Name = "Product name 2",
                 Price = 12M,
                 Published = true,
                 IsShipEnabled = false,
-                Product = new Product()
-                {
-                    Id = 2,
-                    Name = "Product name 2",
-                    Published = true
-                }
             };
             var sci2 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant2,
-                ProductVariantId = productVariant2.Id,
+                Product = product2,
+                ProductId = product2.Id,
                 Quantity = 3
             };
 
@@ -1140,44 +1082,32 @@ namespace Nop.Services.Tests.Orders
             };
 
             //shopping cart
-            var productVariant1 = new ProductVariant
+            var product1 = new Product
             {
                 Id = 1,
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 Price = 10M,
                 Published = true,
                 IsShipEnabled = true,
-                Product = new Product()
-                {
-                    Id = 1,
-                    Name = "Product name 1",
-                    Published = true
-                }
             };
             var sci1 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant1,
-                ProductVariantId = productVariant1.Id,
+                Product = product1,
+                ProductId = product1.Id,
                 Quantity = 2,
             };
-            var productVariant2 = new ProductVariant
+            var product2 = new Product
             {
                 Id = 2,
-                Name = "Product variant name 2",
+                Name = "Product name 2",
                 Price = 12M,
                 Published = true,
                 IsShipEnabled = true,
-                Product = new Product()
-                {
-                    Id = 2,
-                    Name = "Product name 2",
-                    Published = true
-                }
             };
             var sci2 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant2,
-                ProductVariantId = productVariant2.Id,
+                Product = product2,
+                ProductId = product2.Id,
                 Quantity = 3
             };
 
@@ -1228,44 +1158,32 @@ namespace Nop.Services.Tests.Orders
             };
 
             //shopping cart
-            var productVariant1 = new ProductVariant
+            var product1 = new Product
             {
                 Id = 1,
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 Price = 10M,
                 Published = true,
                 IsShipEnabled = true,
-                Product = new Product()
-                {
-                    Id = 1,
-                    Name = "Product name 1",
-                    Published = true
-                }
             };
             var sci1 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant1,
-                ProductVariantId = productVariant1.Id,
+                Product = product1,
+                ProductId = product1.Id,
                 Quantity = 2,
             };
-            var productVariant2 = new ProductVariant
+            var product2 = new Product
             {
                 Id = 2,
-                Name = "Product variant name 2",
+                Name = "Product name 2",
                 Price = 12M,
                 Published = true,
                 IsShipEnabled = true,
-                Product = new Product()
-                {
-                    Id = 2,
-                    Name = "Product name 2",
-                    Published = true
-                }
             };
             var sci2 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant2,
-                ProductVariantId = productVariant2.Id,
+                Product = product2,
+                ProductId = product2.Id,
                 Quantity = 3
             };
 
@@ -1332,44 +1250,32 @@ namespace Nop.Services.Tests.Orders
             };
 
             //shopping cart
-            var productVariant1 = new ProductVariant
+            var product1 = new Product
             {
                 Id = 1,
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 Price = 10M,
                 Published = true,
                 IsShipEnabled = true,
-                Product = new Product()
-                {
-                    Id = 1,
-                    Name = "Product name 1",
-                    Published = true
-                }
             };
             var sci1 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant1,
-                ProductVariantId = productVariant1.Id,
+                Product = product1,
+                ProductId = product1.Id,
                 Quantity = 2,
             };
-            var productVariant2 = new ProductVariant
+            var product2 = new Product
             {
                 Id = 2,
-                Name = "Product variant name 2",
+                Name = "Product name 2",
                 Price = 12M,
                 Published = true,
                 IsShipEnabled = true,
-                Product = new Product()
-                {
-                    Id = 2,
-                    Name = "Product name 2",
-                    Published = true
-                }
             };
             var sci2 = new ShoppingCartItem()
             {
-                ProductVariant = productVariant2,
-                ProductVariantId = productVariant2.Id,
+                Product = product2,
+                ProductId = product2.Id,
                 Quantity = 3
             };
 

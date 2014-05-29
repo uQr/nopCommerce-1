@@ -89,7 +89,7 @@ namespace Nop.Web
             RegisterGlobalFilters(GlobalFilters.Filters);
             RegisterRoutes(RouteTable.Routes);
             //StackExchange profiler
-            if (databaseInstalled && EngineContext.Current.Resolve<StoreInformationSettings>().DisplayMiniProfilerInPublicStore)
+            if (CanPerformProfilingAction())
             {
                 GlobalFilters.Filters.Add(new ProfilingActionFilter());
             }
@@ -118,10 +118,14 @@ namespace Nop.Web
             if (webHelper.IsStaticResource(this.Request))
                 return;
 
+            //keep alive page requested (we ignore it to prevent creating a guest customer records)
+            string keepAliveUrl = string.Format("{0}keepalive/index", webHelper.GetStoreLocation());
+            if (webHelper.GetThisPageUrl(false).StartsWith(keepAliveUrl, StringComparison.InvariantCultureIgnoreCase))
+                return;
+
             EnsureDatabaseIsInstalled();
 
-            if (DataSettingsHelper.DatabaseIsInstalled() && 
-                EngineContext.Current.Resolve<StoreInformationSettings>().DisplayMiniProfilerInPublicStore)
+            if (CanPerformProfilingAction())
             {
                 MiniProfiler.Start();
             }
@@ -134,8 +138,7 @@ namespace Nop.Web
             if (webHelper.IsStaticResource(this.Request))
                 return;
 
-            if (DataSettingsHelper.DatabaseIsInstalled() &&
-                EngineContext.Current.Resolve<StoreInformationSettings>().DisplayMiniProfilerInPublicStore)
+            if (CanPerformProfilingAction())
             {
                 //stop as early as you can, even earlier with MvcMiniProfiler.MiniProfiler.Stop(discardResults: true);
                 MiniProfiler.Stop();
@@ -208,7 +211,7 @@ namespace Nop.Web
                 return;
 
             //keep alive page requested (we ignore it to prevent creating a guest customer records)
-            string keepAliveUrl = string.Format("{0}keepalive", webHelper.GetStoreLocation());
+            string keepAliveUrl = string.Format("{0}keepalive/index", webHelper.GetStoreLocation());
             if (webHelper.GetThisPageUrl(false).StartsWith(keepAliveUrl, StringComparison.InvariantCultureIgnoreCase))
                 return;
 
@@ -223,9 +226,7 @@ namespace Nop.Web
                 //we set culture of admin area to 'en-US' because current implementation of Telerik grid 
                 //doesn't work well in other cultures
                 //e.g., editing decimal value in russian culture
-                var culture = new CultureInfo("en-US");
-                Thread.CurrentThread.CurrentCulture = culture;
-                Thread.CurrentThread.CurrentUICulture = culture;
+                CommonHelper.SetTelerikCulture();
             }
             else
             {
@@ -265,6 +266,18 @@ namespace Nop.Web
             {
                 //don't throw new exception if occurs
             }
+        }
+
+        protected bool CanPerformProfilingAction()
+        {
+            //will not run in medium trust
+            if (CommonHelper.GetTrustLevel() < AspNetHostingPermissionLevel.High)
+                return false;
+
+            if (!DataSettingsHelper.DatabaseIsInstalled())
+                return false;
+
+            return EngineContext.Current.Resolve<StoreInformationSettings>().DisplayMiniProfilerInPublicStore;
         }
     }
 }

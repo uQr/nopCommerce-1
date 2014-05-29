@@ -10,12 +10,11 @@ using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-	public partial class EmailAccountController : BaseNopController
+	public partial class EmailAccountController : BaseAdminController
 	{
         private readonly IEmailAccountService _emailAccountService;
         private readonly ILocalizationService _localizationService;
@@ -39,39 +38,16 @@ namespace Nop.Admin.Controllers
             this._permissionService = permissionService;
 		}
 
-		public ActionResult List(string id)
+		public ActionResult List()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageEmailAccounts))
                 return AccessDeniedView();
 
-			//mark as default email account (if selected)
-			if (!String.IsNullOrEmpty(id))
-			{
-				int defaultEmailAccountId = Convert.ToInt32(id);
-				var defaultEmailAccount = _emailAccountService.GetEmailAccountById(defaultEmailAccountId);
-				if (defaultEmailAccount != null)
-				{
-					_emailAccountSettings.DefaultEmailAccountId = defaultEmailAccountId;
-					_settingService.SaveSetting(_emailAccountSettings);
-				}
-			}
-
-			var emailAccountModels = _emailAccountService.GetAllEmailAccounts()
-									.Select(x => x.ToModel())
-									.ToList();
-			foreach (var eam in emailAccountModels)
-				eam.IsDefaultEmailAccount = eam.Id == _emailAccountSettings.DefaultEmailAccountId;
-
-			var gridModel = new GridModel<EmailAccountModel>
-			{
-				Data = emailAccountModels,
-				Total = emailAccountModels.Count()
-			};
-			return View(gridModel);
+			return View();
 		}
 
-		[HttpPost, GridAction(EnableCustomBinding = true)]
-		public ActionResult List(GridCommand command)
+		[HttpPost]
+		public ActionResult List(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageEmailAccounts))
                 return AccessDeniedView();
@@ -82,7 +58,7 @@ namespace Nop.Admin.Controllers
             foreach (var eam in emailAccountModels)
                 eam.IsDefaultEmailAccount = eam.Id == _emailAccountSettings.DefaultEmailAccountId;
 
-            var gridModel = new GridModel<EmailAccountModel>
+            var gridModel = new DataSourceResult
             {
                 Data = emailAccountModels,
                 Total = emailAccountModels.Count()
@@ -93,6 +69,20 @@ namespace Nop.Admin.Controllers
 				Data = gridModel
 			};
 		}
+
+        public ActionResult MarkAsDefaultEmail(int id)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageEmailAccounts))
+                return AccessDeniedView();
+
+            var defaultEmailAccount = _emailAccountService.GetEmailAccountById(id);
+            if (defaultEmailAccount != null)
+            {
+                _emailAccountSettings.DefaultEmailAccountId = defaultEmailAccount.Id;
+                _settingService.SaveSetting(_emailAccountSettings);
+            }
+            return RedirectToAction("List");
+        }
 
 		public ActionResult Create()
         {
@@ -105,7 +95,7 @@ namespace Nop.Admin.Controllers
 			return View(model);
 		}
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
 		public ActionResult Create(EmailAccountModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageEmailAccounts))
@@ -139,7 +129,7 @@ namespace Nop.Admin.Controllers
 			return View(emailAccount.ToModel());
 		}
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(EmailAccountModel model, bool continueEditing)
         {
@@ -217,20 +207,30 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost]
-        public ActionResult Delete(int id)
-        {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManageEmailAccounts))
-                return AccessDeniedView();
+	    [HttpPost]
+	    public ActionResult Delete(int id)
+	    {
+	        if (!_permissionService.Authorize(StandardPermissionProvider.ManageEmailAccounts))
+	            return AccessDeniedView();
 
-            var emailAccount = _emailAccountService.GetEmailAccountById(id);
-            if (emailAccount == null)
-                //No email account found with the specified id
+	        var emailAccount = _emailAccountService.GetEmailAccountById(id);
+	        if (emailAccount == null)
+	            //No email account found with the specified id
+	            return RedirectToAction("List");
+
+	        try
+	        {
+	            _emailAccountService.DeleteEmailAccount(emailAccount);
+
+	            SuccessNotification(_localizationService.GetResource("Admin.Configuration.EmailAccounts.Deleted"));
+
                 return RedirectToAction("List");
-
-            SuccessNotification(_localizationService.GetResource("Admin.Configuration.EmailAccounts.Deleted"));
-            _emailAccountService.DeleteEmailAccount(emailAccount);
-            return RedirectToAction("List");
-        }
+	        }
+	        catch (Exception exc)
+	        {
+	            ErrorNotification(exc);
+	            return RedirectToAction("Edit", new {id = emailAccount.Id});
+	        }
+	    }
 	}
 }

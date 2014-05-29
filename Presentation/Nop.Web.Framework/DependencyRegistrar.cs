@@ -53,7 +53,6 @@ using Nop.Web.Framework.EmbeddedViews;
 using Nop.Web.Framework.Mvc.Routes;
 using Nop.Web.Framework.Themes;
 using Nop.Web.Framework.UI;
-using Nop.Web.Framework.UI.Editor;
 
 namespace Nop.Web.Framework
 {
@@ -95,13 +94,12 @@ namespace Nop.Web.Framework
             builder.Register(x => new EfDataProviderManager(x.Resolve<DataSettings>())).As<BaseDataProviderManager>().InstancePerDependency();
 
 
-            builder.Register(x => (IEfDataProvider)x.Resolve<BaseDataProviderManager>().LoadDataProvider()).As<IDataProvider>().InstancePerDependency();
-            builder.Register(x => (IEfDataProvider)x.Resolve<BaseDataProviderManager>().LoadDataProvider()).As<IEfDataProvider>().InstancePerDependency();
+            builder.Register(x => x.Resolve<BaseDataProviderManager>().LoadDataProvider()).As<IDataProvider>().InstancePerDependency();
 
             if (dataProviderSettings != null && dataProviderSettings.IsValid())
             {
                 var efDataProviderManager = new EfDataProviderManager(dataSettingsManager.LoadSettings());
-                var dataProvider = (IEfDataProvider)efDataProviderManager.LoadDataProvider();
+                var dataProvider = efDataProviderManager.LoadDataProvider();
                 dataProvider.InitConnectionFactory();
 
                 builder.Register<IDbContext>(c => new NopObjectContext(dataProviderSettings.DataConnectionString)).InstancePerHttpRequest();
@@ -152,11 +150,14 @@ namespace Nop.Web.Framework
             builder.RegisterType<AffiliateService>().As<IAffiliateService>().InstancePerHttpRequest();
             builder.RegisterType<VendorService>().As<IVendorService>().InstancePerHttpRequest();
             builder.RegisterType<AddressService>().As<IAddressService>().InstancePerHttpRequest();
+            builder.RegisterType<SearchTermService>().As<ISearchTermService>().InstancePerHttpRequest();
             builder.RegisterType<GenericAttributeService>().As<IGenericAttributeService>().InstancePerHttpRequest();
             builder.RegisterType<FulltextService>().As<IFulltextService>().InstancePerHttpRequest();
             builder.RegisterType<MaintenanceService>().As<IMaintenanceService>().InstancePerHttpRequest();
 
-            
+
+            builder.RegisterType<CustomerAttributeParser>().As<ICustomerAttributeParser>().InstancePerHttpRequest();
+            builder.RegisterType<CustomerAttributeService>().As<ICustomerAttributeService>().InstancePerHttpRequest();
             builder.RegisterType<CustomerService>().As<ICustomerService>().InstancePerHttpRequest();
             builder.RegisterType<CustomerRegistrationService>().As<ICustomerRegistrationService>().InstancePerHttpRequest();
             builder.RegisterType<CustomerReportService>().As<ICustomerReportService>().InstancePerHttpRequest();
@@ -170,7 +171,7 @@ namespace Nop.Web.Framework
                 .WithParameter(ResolvedParameter.ForNamed<ICacheManager>("nop_cache_static"))
                 .InstancePerHttpRequest();
 
-            builder.RegisterType<GeoCountryLookup>().As<IGeoCountryLookup>().InstancePerHttpRequest();
+            builder.RegisterType<GeoLookupService>().As<IGeoLookupService>().InstancePerHttpRequest();
             builder.RegisterType<CountryService>().As<ICountryService>().InstancePerHttpRequest();
             builder.RegisterType<CurrencyService>().As<ICurrencyService>().InstancePerHttpRequest();
             builder.RegisterType<MeasureService>().As<IMeasureService>().InstancePerHttpRequest();
@@ -270,8 +271,6 @@ namespace Nop.Web.Framework
 
             builder.RegisterType<ScheduleTaskService>().As<IScheduleTaskService>().InstancePerHttpRequest();
 
-            builder.RegisterType<TelerikLocalizationServiceFactory>().As<Telerik.Web.Mvc.Infrastructure.ILocalizationServiceFactory>().InstancePerHttpRequest();
-
             builder.RegisterType<ExportManager>().As<IExportManager>().InstancePerHttpRequest();
             builder.RegisterType<ImportManager>().As<IImportManager>().InstancePerHttpRequest();
             builder.RegisterType<MobileDeviceHelper>().As<IMobileDeviceHelper>().InstancePerHttpRequest();
@@ -286,10 +285,6 @@ namespace Nop.Web.Framework
                 
             builder.RegisterType<EmbeddedViewResolver>().As<IEmbeddedViewResolver>().SingleInstance();
             builder.RegisterType<RoutePublisher>().As<IRoutePublisher>().SingleInstance();
-
-            //HTML Editor services
-            builder.RegisterType<NetAdvDirectoryService>().As<INetAdvDirectoryService>().InstancePerHttpRequest();
-            builder.RegisterType<NetAdvImageService>().As<INetAdvImageService>().InstancePerHttpRequest();
 
             //Register event consumers
             var consumers = typeFinder.FindClassesOfType(typeof(IConsumer<>)).ToList();

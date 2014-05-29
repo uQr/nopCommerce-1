@@ -21,7 +21,12 @@ namespace Nop.Data.Tests.Orders
                 IsTaxExempt = true,
                 TaxCategoryId = 1,
                 AttributeControlType = AttributeControlType.Datepicker,
-                DisplayOrder = 2
+                DisplayOrder = 2,
+                LimitedToStores = true,
+                ValidationMinLength = 3,
+                ValidationMaxLength = 4,
+                ValidationFileAllowedExtensions = "ValidationFileAllowedExtensions 1",
+                ValidationFileMaximumSize = 5,
             };
 
             var fromDb = SaveAndLoadEntity(ca);
@@ -34,6 +39,11 @@ namespace Nop.Data.Tests.Orders
             fromDb.TaxCategoryId.ShouldEqual(1);
             fromDb.AttributeControlType.ShouldEqual(AttributeControlType.Datepicker);
             fromDb.DisplayOrder.ShouldEqual(2);
+            fromDb.ValidationMinLength.ShouldEqual(3);
+            fromDb.ValidationMaxLength.ShouldEqual(4);
+            fromDb.ValidationFileAllowedExtensions.ShouldEqual("ValidationFileAllowedExtensions 1");
+            fromDb.ValidationFileMaximumSize.ShouldEqual(5);
+            fromDb.LimitedToStores.ShouldEqual(true);
         }
 
         [Test]

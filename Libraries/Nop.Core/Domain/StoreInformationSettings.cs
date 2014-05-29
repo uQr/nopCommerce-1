@@ -30,6 +30,11 @@ namespace Nop.Core.Domain
         public bool MobileDevicesSupported { get; set; }
 
         /// <summary>
+        /// Gets or sets a value indicating whether responsive design supported (a graphical theme should also support it)
+        /// </summary>
+        public bool ResponsiveDesignSupported { get; set; }
+
+        /// <summary>
         /// Gets or sets a default store theme used by mobile devices (if enabled)
         /// </summary>
         public string DefaultStoreThemeForMobileDevices { get; set; }
@@ -48,5 +53,25 @@ namespace Nop.Core.Domain
         /// Gets or sets a value indicating whether we should display warnings about the new EU cookie law
         /// </summary>
         public bool DisplayEuCookieLawWarning { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value of Facebook page URL of the site
+        /// </summary>
+        public string FacebookLink { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value of Twitter page URL of the site
+        /// </summary>
+        public string TwitterLink { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value of YouTube channel URL of the site
+        /// </summary>
+        public string YoutubeLink { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value of Google+ page URL of the site
+        /// </summary>
+        public string GooglePlusLink { get; set; }
     }
 }

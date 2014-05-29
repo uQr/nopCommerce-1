@@ -14,12 +14,11 @@ using Nop.Services.Messages;
 using Nop.Services.Orders;
 using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class ReturnRequestController : BaseNopController
+    public partial class ReturnRequestController : BaseAdminController
     {
         #region Fields
 
@@ -68,14 +67,14 @@ namespace Nop.Admin.Controllers
             if (returnRequest == null)
                 throw new ArgumentNullException("returnRequest");
 
-            var opv = _orderService.GetOrderProductVariantById(returnRequest.OrderProductVariantId);
-            if (opv == null)
+            var orderItem = _orderService.GetOrderItemById(returnRequest.OrderItemId);
+            if (orderItem == null)
                 return false;
 
             model.Id = returnRequest.Id;
-            model.ProductVariantId = opv.ProductVariantId;
-            model.ProductName = opv.ProductVariant.FullProductName;
-            model.OrderId = opv.OrderId;
+            model.ProductId = orderItem.ProductId;
+            model.ProductName = orderItem.Product.Name;
+            model.OrderId = orderItem.OrderId;
             model.CustomerId = returnRequest.CustomerId;
             var customer = returnRequest.Customer;
             model.CustomerInfo = customer.IsRegistered() ? customer.Email : _localizationService.GetResource("Admin.Customers.Guest");
@@ -112,8 +111,8 @@ namespace Nop.Admin.Controllers
             return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageReturnRequests))
                 return AccessDeniedView();
@@ -126,15 +125,13 @@ namespace Nop.Admin.Controllers
                 if (PrepareReturnRequestModel(m, rr, false))
                     returnRequestModels.Add(m);
             }
-            var gridModel = new GridModel<ReturnRequestModel>
+            var gridModel = new DataSourceResult
             {
                 Data = returnRequestModels,
                 Total = returnRequests.TotalCount,
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
 
         //edit
@@ -153,7 +150,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(ReturnRequestModel model, bool continueEditing)
         {
@@ -201,8 +198,8 @@ namespace Nop.Admin.Controllers
                 return RedirectToAction("List");
 
             //var customer = returnRequest.Customer;
-            var opv = _orderService.GetOrderProductVariantById(returnRequest.OrderProductVariantId);
-            int queuedEmailId = _workflowMessageService.SendReturnRequestStatusChangedCustomerNotification(returnRequest, opv, _localizationSettings.DefaultAdminLanguageId);
+            var orderItem = _orderService.GetOrderItemById(returnRequest.OrderItemId);
+            int queuedEmailId = _workflowMessageService.SendReturnRequestStatusChangedCustomerNotification(returnRequest, orderItem, _localizationSettings.DefaultAdminLanguageId);
             if (queuedEmailId > 0)
                 SuccessNotification(_localizationService.GetResource("Admin.ReturnRequests.Notified"));
             return RedirectToAction("Edit", returnRequest.Id);

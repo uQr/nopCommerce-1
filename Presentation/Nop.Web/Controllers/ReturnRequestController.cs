@@ -16,7 +16,7 @@ using Nop.Web.Models.Order;
 
 namespace Nop.Web.Controllers
 {
-    public partial class ReturnRequestController : BaseNopController
+    public partial class ReturnRequestController : BasePublicController
     {
 		#region Fields
 
@@ -99,40 +99,32 @@ namespace Nop.Web.Controllers
                 }
 
             //products
-            var orderProductVariants = _orderService.GetAllOrderProductVariants(order.Id, null, null, null, null, null, null);
-            foreach (var opv in orderProductVariants)
+            var orderItems = _orderService.GetAllOrderItems(order.Id, null, null, null, null, null, null);
+            foreach (var orderItem in orderItems)
             {
-                var opvModel = new SubmitReturnRequestModel.OrderProductVariantModel()
+                var orderItemModel = new SubmitReturnRequestModel.OrderItemModel()
                 {
-                    Id = opv.Id,
-                    ProductId = opv.ProductVariant.ProductId,
-                    ProductSeName = opv.ProductVariant.Product.GetSeName(),
-                    AttributeInfo = opv.AttributeDescription,
-                    Quantity = opv.Quantity
+                    Id = orderItem.Id,
+                    ProductId = orderItem.Product.Id,
+                    ProductName = orderItem.Product.GetLocalized(x => x.Name),
+                    ProductSeName = orderItem.Product.GetSeName(),
+                    AttributeInfo = orderItem.AttributeDescription,
+                    Quantity = orderItem.Quantity
                 };
-
-                //product name
-                if (!String.IsNullOrEmpty(opv.ProductVariant.GetLocalized(x => x.Name)))
-                    opvModel.ProductName = string.Format("{0} ({1})", opv.ProductVariant.Product.GetLocalized(x => x.Name), opv.ProductVariant.GetLocalized(x => x.Name));
-                else
-                    opvModel.ProductName = opv.ProductVariant.Product.GetLocalized(x => x.Name);
-                model.Items.Add(opvModel);
+                model.Items.Add(orderItemModel);
 
                 //unit price
-                switch (order.CustomerTaxDisplayType)
+                if (order.CustomerTaxDisplayType == TaxDisplayType.IncludingTax)
                 {
-                    case TaxDisplayType.ExcludingTax:
-                        {
-                            var opvUnitPriceExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(opv.UnitPriceExclTax, order.CurrencyRate);
-                            opvModel.UnitPrice = _priceFormatter.FormatPrice(opvUnitPriceExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, _workContext.WorkingLanguage, false);
-                        }
-                        break;
-                    case TaxDisplayType.IncludingTax:
-                        {
-                            var opvUnitPriceInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(opv.UnitPriceInclTax, order.CurrencyRate);
-                            opvModel.UnitPrice = _priceFormatter.FormatPrice(opvUnitPriceInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, _workContext.WorkingLanguage, true);
-                        }
-                        break;
+                    //including tax
+                    var unitPriceInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderItem.UnitPriceInclTax, order.CurrencyRate);
+                    orderItemModel.UnitPrice = _priceFormatter.FormatPrice(unitPriceInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, _workContext.WorkingLanguage, true);
+                }
+                else
+                {
+                    //excluding tax
+                    var unitPriceExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderItem.UnitPriceExclTax, order.CurrencyRate);
+                    orderItemModel.UnitPrice = _priceFormatter.FormatPrice(unitPriceExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, _workContext.WorkingLanguage, false);
                 }
             }
 
@@ -170,11 +162,11 @@ namespace Nop.Web.Controllers
                 return RedirectToRoute("HomePage");
 
             int count = 0;
-            foreach (var opv in order.OrderProductVariants)
+            foreach (var orderItem in order.OrderItems)
             {
                 int quantity = 0; //parse quantity
                 foreach (string formKey in form.AllKeys)
-                    if (formKey.Equals(string.Format("quantity{0}", opv.Id), StringComparison.InvariantCultureIgnoreCase))
+                    if (formKey.Equals(string.Format("quantity{0}", orderItem.Id), StringComparison.InvariantCultureIgnoreCase))
                     {
                         int.TryParse(form[formKey], out quantity);
                         break;
@@ -184,7 +176,7 @@ namespace Nop.Web.Controllers
                     var rr = new ReturnRequest()
                     {
                         StoreId = _storeContext.CurrentStore.Id,
-                        OrderProductVariantId = opv.Id,
+                        OrderItemId = orderItem.Id,
                         Quantity = quantity,
                         CustomerId = _workContext.CurrentCustomer.Id,
                         ReasonForReturn = model.ReturnReason,
@@ -198,7 +190,7 @@ namespace Nop.Web.Controllers
                     _workContext.CurrentCustomer.ReturnRequests.Add(rr);
                     _customerService.UpdateCustomer(_workContext.CurrentCustomer);
                     //notify store owner here (email)
-                    _workflowMessageService.SendNewReturnRequestStoreOwnerNotification(rr, opv, _localizationSettings.DefaultAdminLanguageId);
+                    _workflowMessageService.SendNewReturnRequestStoreOwnerNotification(rr, orderItem, _localizationSettings.DefaultAdminLanguageId);
 
                     count++;
                 }

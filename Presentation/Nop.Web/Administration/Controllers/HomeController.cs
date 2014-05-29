@@ -3,22 +3,23 @@ using System.Net;
 using System.ServiceModel.Syndication;
 using System.Web.Mvc;
 using System.Xml;
+using Nop.Admin.Infrastructure.Cache;
 using Nop.Admin.Models.Home;
 using Nop.Core;
+using Nop.Core.Caching;
 using Nop.Core.Domain.Common;
 using Nop.Services.Configuration;
-using Nop.Web.Framework.Controllers;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class HomeController : BaseNopController
+    public partial class HomeController : BaseAdminController
     {
         #region Fields
         private readonly IStoreContext _storeContext;
         private readonly CommonSettings _commonSettings;
         private readonly ISettingService _settingService;
         private readonly IWorkContext _workContext;
+        private readonly ICacheManager _cacheManager;
 
         #endregion
 
@@ -27,12 +28,14 @@ namespace Nop.Admin.Controllers
         public HomeController(IStoreContext storeContext, 
             CommonSettings commonSettings, 
             ISettingService settingService,
-            IWorkContext workContext)
+            IWorkContext workContext,
+            ICacheManager cacheManager)
         {
             this._storeContext = storeContext;
             this._commonSettings = commonSettings;
             this._settingService = settingService;
             this._workContext = workContext;
+            this._cacheManager= cacheManager;
         }
 
         #endregion
@@ -55,17 +58,22 @@ namespace Nop.Admin.Controllers
                     NopVersion.CurrentVersion, 
                     Request.Url.IsLoopback, 
                     _commonSettings.HideAdvertisementsOnAdminArea,
-                    _storeContext.CurrentStore.Url);
+                    _storeContext.CurrentStore.Url)
+                    .ToLowerInvariant();
 
-                //specify timeout (5 secs)
-                var request = WebRequest.Create(feedUrl);
-                request.Timeout = 5000;
-                using (WebResponse response = request.GetResponse())
-                using (var reader = XmlReader.Create(response.GetResponseStream()))
+                var rssData = _cacheManager.Get(ModelCacheEventConsumer.OFFICIAL_NEWS_MODEL_KEY, () =>
                 {
-                    var rssData = SyndicationFeed.Load(reader);
-                    return PartialView(rssData);
-                }
+                    //specify timeout (5 secs)
+                    var request = WebRequest.Create(feedUrl);
+                    request.Timeout = 5000;
+                    using (var response = request.GetResponse())
+                    using (var reader = XmlReader.Create(response.GetResponseStream()))
+                    {
+                        return SyndicationFeed.Load(reader);
+                    }
+                });
+ 
+                return PartialView(rssData);
             }
             catch (Exception)
             {

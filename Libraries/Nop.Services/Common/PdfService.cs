@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using Nop.Services.Stores;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 using Nop.Core;
@@ -14,13 +14,14 @@ using Nop.Core.Domain.Shipping;
 using Nop.Core.Domain.Tax;
 using Nop.Core.Html;
 using Nop.Services.Catalog;
+using Nop.Services.Configuration;
 using Nop.Services.Directory;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Media;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
-using System.Globalization;
+using Nop.Services.Stores;
 
 namespace Nop.Services.Common
 {
@@ -45,6 +46,7 @@ namespace Nop.Services.Common
         private readonly IProductAttributeParser _productAttributeParser;
         private readonly IStoreService _storeService;
         private readonly IStoreContext _storeContext;
+        private readonly ISettingService _settingContext;
         private readonly IWebHelper _webHelper;
 
         private readonly CatalogSettings _catalogSettings;
@@ -63,13 +65,22 @@ namespace Nop.Services.Common
             IWorkContext workContext,
             IOrderService orderService,
             IPaymentService paymentService,
-            IDateTimeHelper dateTimeHelper, IPriceFormatter priceFormatter,
-            ICurrencyService currencyService, IMeasureService measureService,
-            IPictureService pictureService, IProductService productService, 
-            IProductAttributeParser productAttributeParser, IStoreService storeService,
-            IStoreContext storeContext, IWebHelper webHelper, 
-            CatalogSettings catalogSettings, CurrencySettings currencySettings,
-            MeasureSettings measureSettings, PdfSettings pdfSettings, TaxSettings taxSettings,
+            IDateTimeHelper dateTimeHelper,
+            IPriceFormatter priceFormatter,
+            ICurrencyService currencyService, 
+            IMeasureService measureService,
+            IPictureService pictureService,
+            IProductService productService, 
+            IProductAttributeParser productAttributeParser,
+            IStoreService storeService,
+            IStoreContext storeContext,
+            ISettingService settingContext,
+            IWebHelper webHelper, 
+            CatalogSettings catalogSettings, 
+            CurrencySettings currencySettings,
+            MeasureSettings measureSettings,
+            PdfSettings pdfSettings,
+            TaxSettings taxSettings,
             AddressSettings addressSettings)
         {
             this._localizationService = localizationService;
@@ -86,6 +97,7 @@ namespace Nop.Services.Common
             this._productAttributeParser = productAttributeParser;
             this._storeService = storeService;
             this._storeContext = storeContext;
+            this._settingContext = settingContext;
             this._webHelper = webHelper;
             this._currencySettings = currencySettings;
             this._catalogSettings = catalogSettings;
@@ -117,6 +129,28 @@ namespace Nop.Services.Common
         /// <summary>
         /// Print an order to PDF
         /// </summary>
+        /// <param name="order">Order</param>
+        /// <param name="languageId">Language identifier; 0 to use a language used when placing an order</param>
+        /// <returns>A path of generates file</returns>
+        public virtual string PrintOrderToPdf(Order order, int languageId)
+        {
+            if (order == null)
+                throw new ArgumentNullException("order");
+
+            string fileName = string.Format("order_{0}_{1}.pdf", order.OrderGuid, CommonHelper.GenerateRandomDigitCode(4));
+            string filePath = Path.Combine(_webHelper.MapPath("~/content/files/ExportImport"), fileName);
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                var orders = new List<Order>();
+                orders.Add(order);
+                PrintOrdersToPdf(fileStream, orders, languageId);
+            }
+            return filePath;
+        }
+
+        /// <summary>
+        /// Print orders to PDF
+        /// </summary>
         /// <param name="stream">Stream</param>
         /// <param name="orders">Orders</param>
         /// <param name="languageId">Language identifier; 0 to use a language used when placing an order</param>
@@ -128,10 +162,6 @@ namespace Nop.Services.Common
             if (orders == null)
                 throw new ArgumentNullException("orders");
 
-            var lang = _languageService.GetLanguageById(languageId);
-            if (lang == null)
-                throw new ArgumentException(string.Format("Cannot load language. ID={0}", languageId));
-
             var pageSize = PageSize.A4;
 
             if (_pdfSettings.LetterPageSizeEnabled)
@@ -141,7 +171,7 @@ namespace Nop.Services.Common
 
 
             var doc = new Document(pageSize);
-            PdfWriter.GetInstance(doc, stream);
+            var pdfWriter = PdfWriter.GetInstance(doc, stream);
             doc.Open();
 
             //fonts
@@ -157,17 +187,20 @@ namespace Nop.Services.Common
 
             foreach (var order in orders)
             {
-                if (languageId == 0)
-                {
-                    lang = _languageService.GetLanguageById(order.CustomerLanguageId);
-                    if (lang == null || !lang.Published)
-                        lang = _workContext.WorkingLanguage;
-                }
+                //by default _pdfSettings contains settings for the current active store
+                //and we need PdfSettings for the store which was used to place an order
+                //so let's load it based on a store of the current order
+                var pdfSettingsByStore = _settingContext.LoadSetting<PdfSettings>(order.StoreId);
+
+
+                var lang = _languageService.GetLanguageById(languageId == 0 ? order.CustomerLanguageId : languageId);
+                if (lang == null || !lang.Published)
+                    lang = _workContext.WorkingLanguage;
 
                 #region Header
 
                 //logo
-                var logoPicture = _pictureService.GetPictureById(_pdfSettings.LogoPictureId);
+                var logoPicture = _pictureService.GetPictureById(pdfSettingsByStore.LogoPictureId);
                 var logoExists = logoPicture != null;
 
                 //header
@@ -298,7 +331,7 @@ namespace Nop.Services.Common
                 doc.Add(new Paragraph(" "));
 
 
-                var orderProductVariants = _orderService.GetAllOrderProductVariants(order.Id, null, null, null, null, null, null);
+                var orderItems = _orderService.GetAllOrderItems(order.Id, null, null, null, null, null, null);
 
                 var productsTable = new PdfPTable(_catalogSettings.ShowProductSku ? 5 : 4);
                 productsTable.WidthPercentage = 100f;
@@ -337,28 +370,24 @@ namespace Nop.Services.Common
                 cell.HorizontalAlignment = Element.ALIGN_CENTER;
                 productsTable.AddCell(cell);
 
-                for (int i = 0; i < orderProductVariants.Count; i++)
+                for (int i = 0; i < orderItems.Count; i++)
                 {
-                    var orderProductVariant = orderProductVariants[i];
-                    var pv = orderProductVariant.ProductVariant;
+                    var orderItem = orderItems[i];
+                    var p = orderItem.Product;
 
                     //product name
-                    string name = "";
-                    if (!String.IsNullOrEmpty(pv.GetLocalized(x => x.Name, lang.Id)))
-                        name = string.Format("{0} ({1})", pv.Product.GetLocalized(x => x.Name, lang.Id), pv.GetLocalized(x => x.Name, lang.Id));
-                    else
-                        name = pv.Product.GetLocalized(x => x.Name, lang.Id);
+                    string name = p.GetLocalized(x => x.Name, lang.Id);
                     cell = new PdfPCell();
                     cell.AddElement(new Paragraph(name, font));
                     cell.HorizontalAlignment = Element.ALIGN_LEFT;
-                    var attributesParagraph = new Paragraph(HtmlHelper.ConvertHtmlToPlainText(orderProductVariant.AttributeDescription, true, true), attributesFont);
+                    var attributesParagraph = new Paragraph(HtmlHelper.ConvertHtmlToPlainText(orderItem.AttributeDescription, true, true), attributesFont);
                     cell.AddElement(attributesParagraph);
                     productsTable.AddCell(cell);
 
                     //SKU
                     if (_catalogSettings.ShowProductSku)
                     {
-                        var sku = pv.FormatSku(orderProductVariant.AttributesXml, _productAttributeParser);
+                        var sku = p.FormatSku(orderItem.AttributesXml, _productAttributeParser);
                         cell = new PdfPCell(new Phrase(sku ?? String.Empty, font));
                         cell.HorizontalAlignment = Element.ALIGN_CENTER;
                         productsTable.AddCell(cell);
@@ -366,46 +395,40 @@ namespace Nop.Services.Common
 
                     //price
                     string unitPrice = string.Empty;
-                    switch (order.CustomerTaxDisplayType)
+                    if (order.CustomerTaxDisplayType == TaxDisplayType.IncludingTax)
                     {
-                        case TaxDisplayType.ExcludingTax:
-                            {
-                                var opvUnitPriceExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderProductVariant.UnitPriceExclTax, order.CurrencyRate);
-                                unitPrice = _priceFormatter.FormatPrice(opvUnitPriceExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
-                            }
-                            break;
-                        case TaxDisplayType.IncludingTax:
-                            {
-                                var opvUnitPriceInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderProductVariant.UnitPriceInclTax, order.CurrencyRate);
-                                unitPrice = _priceFormatter.FormatPrice(opvUnitPriceInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
-                            }
-                            break;
+                        //including tax
+                        var unitPriceInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderItem.UnitPriceInclTax, order.CurrencyRate);
+                        unitPrice = _priceFormatter.FormatPrice(unitPriceInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
+                    }
+                    else
+                    {
+                        //excluding tax
+                        var unitPriceExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderItem.UnitPriceExclTax, order.CurrencyRate);
+                        unitPrice = _priceFormatter.FormatPrice(unitPriceExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
                     }
                     cell = new PdfPCell(new Phrase(unitPrice, font));
                     cell.HorizontalAlignment = Element.ALIGN_LEFT;
                     productsTable.AddCell(cell);
 
                     //qty
-                    cell = new PdfPCell(new Phrase(orderProductVariant.Quantity.ToString(), font));
+                    cell = new PdfPCell(new Phrase(orderItem.Quantity.ToString(), font));
                     cell.HorizontalAlignment = Element.ALIGN_LEFT;
                     productsTable.AddCell(cell);
 
                     //total
-                    string subTotal = string.Empty;
-                    switch (order.CustomerTaxDisplayType)
+                    string subTotal = string.Empty; 
+                    if (order.CustomerTaxDisplayType == TaxDisplayType.IncludingTax)
                     {
-                        case TaxDisplayType.ExcludingTax:
-                            {
-                                var opvPriceExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderProductVariant.PriceExclTax, order.CurrencyRate);
-                                subTotal = _priceFormatter.FormatPrice(opvPriceExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
-                            }
-                            break;
-                        case TaxDisplayType.IncludingTax:
-                            {
-                                var opvPriceInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderProductVariant.PriceInclTax, order.CurrencyRate);
-                                subTotal = _priceFormatter.FormatPrice(opvPriceInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
-                            }
-                            break;
+                        //including tax
+                        var priceInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderItem.PriceInclTax, order.CurrencyRate);
+                        subTotal = _priceFormatter.FormatPrice(priceInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
+                    }
+                    else
+                    {
+                        //excluding tax
+                        var priceExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(orderItem.PriceExclTax, order.CurrencyRate);
+                        subTotal = _priceFormatter.FormatPrice(priceExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
                     }
                     cell = new PdfPCell(new Phrase(subTotal, font));
                     cell.HorizontalAlignment = Element.ALIGN_LEFT;
@@ -433,110 +456,105 @@ namespace Nop.Services.Common
 
                 //subtotal
                 doc.Add(new Paragraph(" "));
-                switch (order.CustomerTaxDisplayType)
+                //order subtotal
+                if (order.CustomerTaxDisplayType == TaxDisplayType.IncludingTax && !_taxSettings.ForceTaxExclusionFromOrderSubtotal)
                 {
-                    case TaxDisplayType.ExcludingTax:
-                        {
-                            var orderSubtotalExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderSubtotalExclTax, order.CurrencyRate);
-                            string orderSubtotalExclTaxStr = _priceFormatter.FormatPrice(orderSubtotalExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
+                    //including tax
 
-                            var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Sub-Total", lang.Id), orderSubtotalExclTaxStr), font);
-                            p.Alignment = Element.ALIGN_RIGHT;
-                            doc.Add(p);
-                        }
-                        break;
-                    case TaxDisplayType.IncludingTax:
-                        {
-                            var orderSubtotalInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderSubtotalInclTax, order.CurrencyRate);
-                            string orderSubtotalInclTaxStr = _priceFormatter.FormatPrice(orderSubtotalInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
+                    var orderSubtotalInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderSubtotalInclTax, order.CurrencyRate);
+                    string orderSubtotalInclTaxStr = _priceFormatter.FormatPrice(orderSubtotalInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
 
-                            var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Sub-Total", lang.Id), orderSubtotalInclTaxStr), font);
-                            p.Alignment = Element.ALIGN_RIGHT;
-                            doc.Add(p);
-                        }
-                        break;
+                    var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Sub-Total", lang.Id), orderSubtotalInclTaxStr), font);
+                    p.Alignment = Element.ALIGN_RIGHT;
+                    doc.Add(p);
                 }
+                else
+                {
+                    //excluding tax
+
+                    var orderSubtotalExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderSubtotalExclTax, order.CurrencyRate);
+                    string orderSubtotalExclTaxStr = _priceFormatter.FormatPrice(orderSubtotalExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
+
+                    var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Sub-Total", lang.Id), orderSubtotalExclTaxStr), font);
+                    p.Alignment = Element.ALIGN_RIGHT;
+                    doc.Add(p);
+                }
+
                 //discount (applied to order subtotal)
                 if (order.OrderSubTotalDiscountExclTax > decimal.Zero)
                 {
-                    switch (order.CustomerTaxDisplayType)
+                    //order subtotal
+                    if (order.CustomerTaxDisplayType == TaxDisplayType.IncludingTax && !_taxSettings.ForceTaxExclusionFromOrderSubtotal)
                     {
-                        case TaxDisplayType.ExcludingTax:
-                            {
-                                var orderSubTotalDiscountExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderSubTotalDiscountExclTax, order.CurrencyRate);
-                                string orderSubTotalDiscountInCustomerCurrencyStr = _priceFormatter.FormatPrice(-orderSubTotalDiscountExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
+                        //including tax
 
-                                var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Discount", lang.Id), orderSubTotalDiscountInCustomerCurrencyStr), font);
-                                p.Alignment = Element.ALIGN_RIGHT;
-                                doc.Add(p);
-                            }
-                            break;
-                        case TaxDisplayType.IncludingTax:
-                            {
-                                var orderSubTotalDiscountInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderSubTotalDiscountInclTax, order.CurrencyRate);
-                                string orderSubTotalDiscountInCustomerCurrencyStr = _priceFormatter.FormatPrice(-orderSubTotalDiscountInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
+                        var orderSubTotalDiscountInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderSubTotalDiscountInclTax, order.CurrencyRate);
+                        string orderSubTotalDiscountInCustomerCurrencyStr = _priceFormatter.FormatPrice(-orderSubTotalDiscountInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
 
-                                var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Discount", lang.Id), orderSubTotalDiscountInCustomerCurrencyStr), font);
-                                p.Alignment = Element.ALIGN_RIGHT;
-                                doc.Add(p);
-                            }
-                            break;
+                        var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Discount", lang.Id), orderSubTotalDiscountInCustomerCurrencyStr), font);
+                        p.Alignment = Element.ALIGN_RIGHT;
+                        doc.Add(p);
+                    }
+                    else
+                    {
+                        //excluding tax
+
+                        var orderSubTotalDiscountExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderSubTotalDiscountExclTax, order.CurrencyRate);
+                        string orderSubTotalDiscountInCustomerCurrencyStr = _priceFormatter.FormatPrice(-orderSubTotalDiscountExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
+
+                        var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Discount", lang.Id), orderSubTotalDiscountInCustomerCurrencyStr), font);
+                        p.Alignment = Element.ALIGN_RIGHT;
+                        doc.Add(p);
                     }
                 }
 
                 //shipping
                 if (order.ShippingStatus != ShippingStatus.ShippingNotRequired)
                 {
-                    switch (order.CustomerTaxDisplayType)
+                    if (order.CustomerTaxDisplayType == TaxDisplayType.IncludingTax)
                     {
-                        case TaxDisplayType.ExcludingTax:
-                            {
-                                var orderShippingExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderShippingExclTax, order.CurrencyRate);
-                                string orderShippingExclTaxStr = _priceFormatter.FormatShippingPrice(orderShippingExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
+                        //including tax
+                        var orderShippingInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderShippingInclTax, order.CurrencyRate);
+                        string orderShippingInclTaxStr = _priceFormatter.FormatShippingPrice(orderShippingInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
 
-                                var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Shipping", lang.Id), orderShippingExclTaxStr), font);
-                                p.Alignment = Element.ALIGN_RIGHT;
-                                doc.Add(p);
-                            }
-                            break;
-                        case TaxDisplayType.IncludingTax:
-                            {
-                                var orderShippingInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderShippingInclTax, order.CurrencyRate);
-                                string orderShippingInclTaxStr = _priceFormatter.FormatShippingPrice(orderShippingInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
+                        var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Shipping", lang.Id), orderShippingInclTaxStr), font);
+                        p.Alignment = Element.ALIGN_RIGHT;
+                        doc.Add(p);
+                    }
+                    else
+                    {
+                        //excluding tax
+                        var orderShippingExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.OrderShippingExclTax, order.CurrencyRate);
+                        string orderShippingExclTaxStr = _priceFormatter.FormatShippingPrice(orderShippingExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
 
-                                var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Shipping", lang.Id), orderShippingInclTaxStr), font);
-                                p.Alignment = Element.ALIGN_RIGHT;
-                                doc.Add(p);
-                            }
-                            break;
+                        var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.Shipping", lang.Id), orderShippingExclTaxStr), font);
+                        p.Alignment = Element.ALIGN_RIGHT;
+                        doc.Add(p);
                     }
                 }
 
                 //payment fee
                 if (order.PaymentMethodAdditionalFeeExclTax > decimal.Zero)
                 {
-                    switch (order.CustomerTaxDisplayType)
+                    if (order.CustomerTaxDisplayType == TaxDisplayType.IncludingTax)
                     {
-                        case TaxDisplayType.ExcludingTax:
-                            {
-                                var paymentMethodAdditionalFeeExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.PaymentMethodAdditionalFeeExclTax, order.CurrencyRate);
-                                string paymentMethodAdditionalFeeExclTaxStr = _priceFormatter.FormatPaymentMethodAdditionalFee(paymentMethodAdditionalFeeExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
+                        //including tax
+                        var paymentMethodAdditionalFeeInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.PaymentMethodAdditionalFeeInclTax, order.CurrencyRate);
+                        string paymentMethodAdditionalFeeInclTaxStr = _priceFormatter.FormatPaymentMethodAdditionalFee(paymentMethodAdditionalFeeInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
 
-                                var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.PaymentMethodAdditionalFee", lang.Id), paymentMethodAdditionalFeeExclTaxStr), font);
-                                p.Alignment = Element.ALIGN_RIGHT;
-                                doc.Add(p);
-                            }
-                            break;
-                        case TaxDisplayType.IncludingTax:
-                            {
-                                var paymentMethodAdditionalFeeInclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.PaymentMethodAdditionalFeeInclTax, order.CurrencyRate);
-                                string paymentMethodAdditionalFeeInclTaxStr = _priceFormatter.FormatPaymentMethodAdditionalFee(paymentMethodAdditionalFeeInclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, true);
+                        var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.PaymentMethodAdditionalFee", lang.Id), paymentMethodAdditionalFeeInclTaxStr), font);
+                        p.Alignment = Element.ALIGN_RIGHT;
+                        doc.Add(p);
+                    }
+                    else
+                    {
+                        //excluding tax
+                        var paymentMethodAdditionalFeeExclTaxInCustomerCurrency = _currencyService.ConvertCurrency(order.PaymentMethodAdditionalFeeExclTax, order.CurrencyRate);
+                        string paymentMethodAdditionalFeeExclTaxStr = _priceFormatter.FormatPaymentMethodAdditionalFee(paymentMethodAdditionalFeeExclTaxInCustomerCurrency, true, order.CustomerCurrencyCode, lang, false);
 
-                                var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.PaymentMethodAdditionalFee", lang.Id), paymentMethodAdditionalFeeInclTaxStr), font);
-                                p.Alignment = Element.ALIGN_RIGHT;
-                                doc.Add(p);
-                            }
-                            break;
+                        var p = new Paragraph(String.Format("{0} {1}", _localizationService.GetResource("PDFInvoice.PaymentMethodAdditionalFee", lang.Id), paymentMethodAdditionalFeeExclTaxStr), font);
+                        p.Alignment = Element.ALIGN_RIGHT;
+                        doc.Add(p);
                     }
                 }
 
@@ -632,7 +650,7 @@ namespace Nop.Services.Common
 
                 #region Order notes
 
-                if (_pdfSettings.RenderOrderNotes)
+                if (pdfSettingsByStore.RenderOrderNotes)
                 {
                     var orderNotes = order.OrderNotes
                         .Where(on => on.DisplayToCustomer)
@@ -671,8 +689,86 @@ namespace Nop.Services.Common
                             cell.AddElement(new Paragraph(HtmlHelper.ConvertHtmlToPlainText(orderNote.FormatOrderNoteText(), true, true), font));
                             cell.HorizontalAlignment = Element.ALIGN_LEFT;
                             notesTable.AddCell(cell);
+
+                            //should we display a link to downloadable files here?
+                            //I think, no. Onyway, PDFs are printable documents and links (files) are useful here
                         }
                         doc.Add(notesTable);
+                    }
+                }
+
+                #endregion
+
+                #region Footer
+
+                if (!String.IsNullOrEmpty(pdfSettingsByStore.InvoiceFooterTextColumn1) || !String.IsNullOrEmpty(pdfSettingsByStore.InvoiceFooterTextColumn2))
+                {
+                    var column1Lines = String.IsNullOrEmpty(pdfSettingsByStore.InvoiceFooterTextColumn1) ?
+                        new List<string>() :
+                        pdfSettingsByStore.InvoiceFooterTextColumn1
+                        .Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)
+                        .ToList();
+                    var column2Lines = String.IsNullOrEmpty(pdfSettingsByStore.InvoiceFooterTextColumn2) ?
+                        new List<string>() :
+                        pdfSettingsByStore.InvoiceFooterTextColumn2
+                        .Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries)
+                        .ToList();
+                    if (column1Lines.Count > 0 || column2Lines.Count > 0)
+                    {
+                        var totalLines = Math.Max(column1Lines.Count, column2Lines.Count);
+                        const float margin = 43;
+
+                        //if you have really a lot of lines in the footer, then replace 9 with 10 or 11
+                        int footerHeight = totalLines * 9;
+                        var directContent = pdfWriter.DirectContent;
+                        directContent.MoveTo(pageSize.GetLeft(margin), pageSize.GetBottom(margin) + footerHeight);
+                        directContent.LineTo(pageSize.GetRight(margin), pageSize.GetBottom(margin) + footerHeight);
+                        directContent.Stroke();
+
+
+                        var footerTable = new PdfPTable(2);
+                        footerTable.WidthPercentage = 100f;
+                            footerTable.SetTotalWidth(new float[] { 250, 250 });
+
+                        //column 1
+                        if (column1Lines.Count > 0)
+                        {
+                            var column1 = new PdfPCell();
+                            column1.Border = Rectangle.NO_BORDER;
+                            column1.HorizontalAlignment = Element.ALIGN_LEFT;
+                            foreach (var footerLine in column1Lines)
+                            {
+                                column1.AddElement(new Phrase(footerLine, font));
+                            }
+                            footerTable.AddCell(column1);
+                        }
+                        else
+                        {
+                            var column = new PdfPCell(new Phrase(" "));
+                            column.Border = Rectangle.NO_BORDER;
+                            footerTable.AddCell(column);
+                        }
+
+                        //column 2
+                        if (column2Lines.Count > 0)
+                        {
+                            var column2 = new PdfPCell();
+                            column2.Border = Rectangle.NO_BORDER;
+                            column2.HorizontalAlignment = Element.ALIGN_LEFT;
+                            foreach (var footerLine in column2Lines)
+                            {
+                                column2.AddElement(new Phrase(footerLine, font));
+                            }
+                            footerTable.AddCell(column2);
+                        }
+                        else
+                        {
+                            var column = new PdfPCell(new Phrase(" "));
+                            column.Border = Rectangle.NO_BORDER;
+                            footerTable.AddCell(column);
+                        }
+
+                        footerTable.WriteSelectedRows(0, totalLines, pageSize.GetLeft(margin), pageSize.GetBottom(margin) + footerHeight, directContent);
                     }
                 }
 
@@ -789,34 +885,30 @@ namespace Nop.Services.Common
                     cell.HorizontalAlignment = Element.ALIGN_CENTER;
                     productsTable.AddCell(cell);
 
-                    foreach (var sopv in shipment.ShipmentOrderProductVariants)
+                    foreach (var si in shipment.ShipmentItems)
                     {
                         //product name
-                        var opv = _orderService.GetOrderProductVariantById(sopv.OrderProductVariantId);
-                        if (opv == null)
+                        var orderItem = _orderService.GetOrderItemById(si.OrderItemId);
+                        if (orderItem == null)
                             continue;
-                        
-                        var pv = opv.ProductVariant;
-                        string name = "";
-                        if (!String.IsNullOrEmpty(pv.GetLocalized(x => x.Name, lang.Id)))
-                            name = string.Format("{0} ({1})", pv.Product.GetLocalized(x => x.Name, lang.Id), pv.GetLocalized(x => x.Name, lang.Id));
-                        else
-                            name = pv.Product.GetLocalized(x => x.Name, lang.Id);
+
+                        var p = orderItem.Product;
+                        string name = p.GetLocalized(x => x.Name, lang.Id);
                         cell = new PdfPCell();
                         cell.AddElement(new Paragraph(name, font));
                         cell.HorizontalAlignment = Element.ALIGN_LEFT;
-                        var attributesParagraph = new Paragraph(HtmlHelper.ConvertHtmlToPlainText(opv.AttributeDescription, true, true), attributesFont);
+                        var attributesParagraph = new Paragraph(HtmlHelper.ConvertHtmlToPlainText(orderItem.AttributeDescription, true, true), attributesFont);
                         cell.AddElement(attributesParagraph);
                         productsTable.AddCell(cell);
 
                         //SKU
-                        var sku = pv.FormatSku(opv.AttributesXml, _productAttributeParser);
+                        var sku = p.FormatSku(orderItem.AttributesXml, _productAttributeParser);
                         cell = new PdfPCell(new Phrase(sku ?? String.Empty, font));
                         cell.HorizontalAlignment = Element.ALIGN_CENTER;
                         productsTable.AddCell(cell);
 
                         //qty
-                        cell = new PdfPCell(new Phrase(sopv.Quantity.ToString(), font));
+                        cell = new PdfPCell(new Phrase(si.Quantity.ToString(), font));
                         cell.HorizontalAlignment = Element.ALIGN_CENTER;
                         productsTable.AddCell(cell);
                     }
@@ -879,6 +971,21 @@ namespace Nop.Services.Common
                 doc.Add(new Paragraph(HtmlHelper.StripTags(HtmlHelper.ConvertHtmlToPlainText(productFullDescription)), font));
                 doc.Add(new Paragraph(" "));
 
+                if (product.ProductType == ProductType.SimpleProduct)
+                {
+                    //simple product
+                    //render its properties such as price, weight, etc
+                    doc.Add(new Paragraph(String.Format("{0}: {1} {2}", _localizationService.GetResource("PDFProductCatalog.Price", lang.Id), product.Price.ToString("0.00"), _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode), font));
+                    doc.Add(new Paragraph(String.Format("{0}: {1}", _localizationService.GetResource("PDFProductCatalog.SKU", lang.Id), product.Sku), font));
+
+                    if (product.IsShipEnabled && product.Weight > Decimal.Zero)
+                        doc.Add(new Paragraph(String.Format("{0}: {1} {2}", _localizationService.GetResource("PDFProductCatalog.Weight", lang.Id), product.Weight.ToString("0.00"), _measureService.GetMeasureWeightById(_measureSettings.BaseWeightId).Name), font));
+
+                    if (product.ManageInventoryMethod == ManageInventoryMethod.ManageStock)
+                        doc.Add(new Paragraph(String.Format("{0}: {1}", _localizationService.GetResource("PDFProductCatalog.StockQuantity", lang.Id), product.StockQuantity), font));
+
+                    doc.Add(new Paragraph(" "));
+                }
                 var pictures = _pictureService.GetPicturesByProductId(product.Id);
                 if (pictures.Count > 0)
                 {
@@ -913,46 +1020,52 @@ namespace Nop.Services.Common
                     doc.Add(new Paragraph(" "));
                 }
 
-                int pvNum = 1;
 
-                foreach (var productVariant in _productService.GetProductVariantsByProductId(product.Id, true))
+                if (product.ProductType == ProductType.GroupedProduct)
                 {
-                    string pvName = String.IsNullOrEmpty(productVariant.GetLocalized(x => x.Name, lang.Id)) ? _localizationService.GetResource("PDFProductCatalog.UnnamedProductVariant", lang.Id) : productVariant.GetLocalized(x => x.Name, lang.Id);
-
-                    doc.Add(new Paragraph(String.Format("{0}.{1}. {2}", productNumber, pvNum, pvName), font));
-                    doc.Add(new Paragraph(" "));
-
-                    string productVariantDescription = productVariant.GetLocalized(x => x.Description, lang.Id);
-                    if (!String.IsNullOrEmpty(productVariantDescription))
+                    //grouped product. render its associated products
+                    int pvNum = 1;
+                    foreach (var associatedProduct in _productService.SearchProducts(parentGroupedProductId: product.Id,
+                        showHidden: true))
                     {
-                        doc.Add(new Paragraph(HtmlHelper.StripTags(HtmlHelper.ConvertHtmlToPlainText(productVariantDescription)), font));
+                        doc.Add(new Paragraph(String.Format("{0}-{1}. {2}", productNumber, pvNum, associatedProduct.GetLocalized(x => x.Name, lang.Id)), font));
                         doc.Add(new Paragraph(" "));
+
+                        //uncomment to render associated product description
+                        //string apDescription = associatedProduct.GetLocalized(x => x.ShortDescription, lang.Id);
+                        //if (!String.IsNullOrEmpty(apDescription))
+                        //{
+                        //    doc.Add(new Paragraph(HtmlHelper.StripTags(HtmlHelper.ConvertHtmlToPlainText(apDescription)), font));
+                        //    doc.Add(new Paragraph(" "));
+                        //}
+
+                        //uncomment to render associated product picture
+                        //var apPicture = _pictureService.GetPicturesByProductId(associatedProduct.Id).FirstOrDefault();
+                        //if (apPicture != null)
+                        //{
+                        //    var picBinary = _pictureService.LoadPictureBinary(apPicture);
+                        //    if (picBinary != null && picBinary.Length > 0)
+                        //    {
+                        //        var pictureLocalPath = _pictureService.GetThumbLocalPath(apPicture, 200, false);
+                        //        doc.Add(Image.GetInstance(pictureLocalPath));
+                        //    }
+                        //}
+
+                        doc.Add(new Paragraph(String.Format("{0}: {1} {2}", _localizationService.GetResource("PDFProductCatalog.Price", lang.Id), associatedProduct.Price.ToString("0.00"), _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode), font));
+                        doc.Add(new Paragraph(String.Format("{0}: {1}", _localizationService.GetResource("PDFProductCatalog.SKU", lang.Id), associatedProduct.Sku), font));
+
+                        if (associatedProduct.IsShipEnabled && associatedProduct.Weight > Decimal.Zero)
+                            doc.Add(new Paragraph(String.Format("{0}: {1} {2}", _localizationService.GetResource("PDFProductCatalog.Weight", lang.Id), associatedProduct.Weight.ToString("0.00"), _measureService.GetMeasureWeightById(_measureSettings.BaseWeightId).Name), font));
+
+                        if (associatedProduct.ManageInventoryMethod == ManageInventoryMethod.ManageStock)
+                            doc.Add(new Paragraph(String.Format("{0}: {1}", _localizationService.GetResource("PDFProductCatalog.StockQuantity", lang.Id), associatedProduct.StockQuantity), font));
+
+                        doc.Add(new Paragraph(" "));
+
+                        pvNum++;
                     }
-
-                    var pic = _pictureService.GetPictureById(productVariant.PictureId);
-                    if (pic != null)
-                    {
-                        var picBinary = _pictureService.LoadPictureBinary(pic);
-                        if (picBinary != null && picBinary.Length > 0)
-                        {
-                            var pictureLocalPath = _pictureService.GetThumbLocalPath(pic, 200, false);
-                            doc.Add(Image.GetInstance(pictureLocalPath));
-                        }
-                    }
-
-                    doc.Add(new Paragraph(String.Format("{0}: {1} {2}", _localizationService.GetResource("PDFProductCatalog.Price", lang.Id), productVariant.Price.ToString("0.00"), _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode), font));
-                    doc.Add(new Paragraph(String.Format("{0}: {1}", _localizationService.GetResource("PDFProductCatalog.SKU", lang.Id), productVariant.Sku), font));
-
-                    if (productVariant.IsShipEnabled && productVariant.Weight > Decimal.Zero)
-                        doc.Add(new Paragraph(String.Format("{0}: {1} {2}", _localizationService.GetResource("PDFProductCatalog.Weight", lang.Id), productVariant.Weight.ToString("0.00"), _measureService.GetMeasureWeightById(_measureSettings.BaseWeightId).Name), font));
-
-                    if (productVariant.ManageInventoryMethod == ManageInventoryMethod.ManageStock)
-                        doc.Add(new Paragraph(String.Format("{0}: {1}", _localizationService.GetResource("PDFProductCatalog.StockQuantity", lang.Id), productVariant.StockQuantity), font));
-
-                    doc.Add(new Paragraph(" "));
-
-                    pvNum++;
                 }
+
 
                 productNumber++;
 

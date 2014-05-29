@@ -5,14 +5,13 @@ using Nop.Services.Blogs;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.Forums;
-using Nop.Services.Localization;
 using Nop.Services.News;
 using Nop.Services.Seo;
 using Nop.Services.Topics;
 
 namespace Nop.Web.Controllers
 {
-    public partial class BackwardCompatibility1XController : BaseNopController
+    public partial class BackwardCompatibility1XController : BasePublicController
     {
 		#region Fields
 
@@ -224,7 +223,7 @@ namespace Nop.Web.Controllers
             if (topic == null)
                 return RedirectToRoutePermanent("HomePage");
 
-            return RedirectToRoutePermanent("Topic", new { systemName = topic.SystemName });
+            return RedirectToRoutePermanent("Topic", new { SeName = topic.GetSeName() });
         }
 
         public ActionResult RedirectForumGroup(string id, bool idIncludesSename = true)

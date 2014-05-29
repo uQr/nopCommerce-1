@@ -9,12 +9,11 @@ using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Services.Stores;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class MessageTemplateController : BaseNopController
+    public partial class MessageTemplateController : BaseAdminController
     {
         #region Fields
 
@@ -168,22 +167,35 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command, MessageTemplateListModel model)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command, MessageTemplateListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMessageTemplates))
                 return AccessDeniedView();
 
             var messageTemplates = _messageTemplateService.GetAllMessageTemplates(model.SearchStoreId);
-            var gridModel = new GridModel<MessageTemplateModel>
+            var gridModel = new DataSourceResult
             {
-                Data = messageTemplates.Select(x => x.ToModel()),
+                Data = messageTemplates.Select(x =>
+                {
+                    var templateModel = x.ToModel();
+                    PrepareStoresMappingModel(templateModel, x, false);
+                    var stores = _storeService
+                            .GetAllStores()
+                            .Where(s => !x.LimitedToStores || templateModel.SelectedStoreIds.Contains(s.Id))
+                            .ToList();
+                    for (int i = 0; i < stores.Count; i++)
+                    {
+                        templateModel.ListOfStores += stores[i].Name;
+                        if (i != stores.Count - 1)
+                            templateModel.ListOfStores += ", ";
+                    }
+                    return templateModel;
+                }),
                 Total = messageTemplates.Count
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
 
         public ActionResult Edit(int id)
@@ -217,7 +229,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(MessageTemplateModel model, bool continueEditing)
         {
@@ -239,7 +251,18 @@ namespace Nop.Admin.Controllers
                 UpdateLocales(messageTemplate, model);
 
                 SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.MessageTemplates.Updated"));
-                return continueEditing ? RedirectToAction("Edit", messageTemplate.Id) : RedirectToAction("List");
+                
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", messageTemplate.Id);
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
 

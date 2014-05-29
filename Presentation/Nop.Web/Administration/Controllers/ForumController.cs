@@ -7,11 +7,11 @@ using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class ForumController : BaseNopController
+    public partial class ForumController : BaseAdminController
     {
         private readonly IForumService _forumService;
         private readonly IDateTimeHelper _dateTimeHelper;
@@ -40,21 +40,53 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageForums))
                 return AccessDeniedView();
 
-            var forumGroupsModel = _forumService.GetAllForumGroups()
-                .Select(fg =>
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult ForumGroupList(DataSourceRequest command)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageForums))
+                return AccessDeniedView();
+
+            var forumGroups = _forumService.GetAllForumGroups();
+            var gridModel = new DataSourceResult
+            {
+                Data = forumGroups.Select(fg =>
                 {
-                    var forumGroupModel = fg.ToModel();
-                    forumGroupModel.CreatedOn = _dateTimeHelper.ConvertToUserTime(fg.CreatedOnUtc, DateTimeKind.Utc);
-                    foreach (var f in fg.Forums.OrderBy(x=>x.DisplayOrder))
-                    {
-                        var forumModel = f.ToModel();
-                        forumModel.CreatedOn = _dateTimeHelper.ConvertToUserTime(f.CreatedOnUtc, DateTimeKind.Utc);
-                        forumGroupModel.ForumModels.Add(forumModel);
-                    }
-                    return forumGroupModel;
-                })
-                .ToList();
-            return View(forumGroupsModel);
+                    var model = fg.ToModel();
+                    model.CreatedOn = _dateTimeHelper.ConvertToUserTime(fg.CreatedOnUtc, DateTimeKind.Utc);
+                    return model;
+                }),
+                Total = forumGroups.Count
+            };
+
+            return Json(gridModel);
+        }
+
+        [HttpPost]
+        public ActionResult ForumList(int forumGroupId)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageForums))
+                return AccessDeniedView();
+
+            var forumGroup = _forumService.GetForumGroupById(forumGroupId);
+            if (forumGroup == null)
+                throw new Exception("Forum group cannot be loaded");
+
+            var forums = forumGroup.Forums;
+            var gridModel = new DataSourceResult
+            {
+                Data = forums.Select(f =>
+                {
+                    var forumModel = f.ToModel();
+                    forumModel.CreatedOn = _dateTimeHelper.ConvertToUserTime(f.CreatedOnUtc, DateTimeKind.Utc);
+                    return forumModel;
+                }),
+                Total = forums.Count
+            };
+
+            return Json(gridModel);
         }
 
         #endregion
@@ -69,7 +101,7 @@ namespace Nop.Admin.Controllers
             return View(new ForumGroupModel { DisplayOrder = 1 });
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult CreateForumGroup(ForumGroupModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageForums))
@@ -105,7 +137,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult CreateForum(ForumModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageForums))
@@ -149,7 +181,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult EditForumGroup(ForumGroupModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageForums))
@@ -193,7 +225,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult EditForum(ForumModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageForums))

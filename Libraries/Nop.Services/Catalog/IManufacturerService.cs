@@ -14,21 +14,6 @@ namespace Nop.Services.Catalog
         /// </summary>
         /// <param name="manufacturer">Manufacturer</param>
         void DeleteManufacturer(Manufacturer manufacturer);
-
-        /// <summary>
-        /// Gets all manufacturers
-        /// </summary>
-        /// <param name="showHidden">A value indicating whether to show hidden records</param>
-        /// <returns>Manufacturer collection</returns>
-        IList<Manufacturer> GetAllManufacturers(bool showHidden = false);
-
-        /// <summary>
-        /// Gets all manufacturers
-        /// </summary>
-        /// <param name="manufacturerName">Manufacturer name</param>
-        /// <param name="showHidden">A value indicating whether to show hidden records</param>
-        /// <returns>Manufacturer collection</returns>
-        IList<Manufacturer> GetAllManufacturers(string manufacturerName, bool showHidden = false);
         
         /// <summary>
         /// Gets all manufacturers
@@ -38,8 +23,10 @@ namespace Nop.Services.Catalog
         /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Manufacturers</returns>
-        IPagedList<Manufacturer> GetAllManufacturers(string manufacturerName,
-            int pageIndex, int pageSize, bool showHidden = false);
+        IPagedList<Manufacturer> GetAllManufacturers(string manufacturerName = "",
+            int pageIndex = 0,
+            int pageSize = int.MaxValue,
+            bool showHidden = false);
 
         /// <summary>
         /// Gets a manufacturer
@@ -85,13 +72,6 @@ namespace Nop.Services.Catalog
         /// <returns>Product manufacturer mapping collection</returns>
         IList<ProductManufacturer> GetProductManufacturersByProductId(int productId, bool showHidden = false);
         
-        /// <summary>
-        /// Get a total number of featured products by manufacturer identifier
-        /// </summary>
-        /// <param name="manufacturerId">Manufacturer identifier</param>
-        /// <returns>Number of featured products</returns>
-        int GetTotalNumberOfFeaturedProducts(int manufacturerId);
-
         /// <summary>
         /// Gets a product manufacturer mapping 
         /// </summary>

@@ -61,14 +61,14 @@
                     {
                         <div class="inputs">
                             <label>@T("Account.Fields.Gender"):</label>
-                            <span class="gender">
-                                @Html.RadioButton("Gender", "M", (Model.Gender == "M"), new { id = "gender-male" })
-                                <span class="forcheckbox" for="gender-male">@T("Account.Fields.Gender.Male")</span>
-                            </span>
-                            <span class="gender">
+                            <div class="gender">
+                                @Html.RadioButton("Gender", "M", (Model.Gender == "M"), new { id = "gender-male"})
+                                <label class="forcheckbox" for="gender-male">@T("Account.Fields.Gender.Male")</label>
+                            </div>
+                            <div class="gender">
                                 @Html.RadioButton("Gender", "F", (Model.Gender == "F"), new { id = "gender-female" })
-                                <span class="forcheckbox" for="gender-female">@T("Account.Fields.Gender.Female")</span>
-                            </span>
+                                <label class="forcheckbox" for="gender-female">@T("Account.Fields.Gender.Female")</label>
+                            </div>
                         </div>
                     }
                     <div class="inputs">
@@ -145,13 +145,13 @@
                     </colgroup>
                     <thead>
                         <tr>
-                            <th class="a-center">
+                            <th class="a-center auth-method-name">
                                 @T("Account.AssociatedExternalAuth.AuthMethodName")
                             </th>
-                            <th class="a-center">
+                            <th class="a-center email">
                                 @T("Account.AssociatedExternalAuth.Email")
                             </th>
-                            <th class="a-center">
+                            <th class="a-center external-id">
                                 @T("Account.AssociatedExternalAuth.ExternalIdentifier")
                             </th>
                         </tr>
@@ -160,13 +160,13 @@
                         @foreach (var item in Model.AssociatedExternalAuthRecords)
                         {
                             <tr>
-                                <td class="a-left">
+                                <td class="a-left auth-method-name">
                                     @item.AuthMethodName
                                 </td>
-                                <td class="a-left">
+                                <td class="a-left email">
                                     @item.Email
                                 </td>
-                                <td class="a-left">
+                                <td class="a-left external-id">
                                     @CommonHelper.EnsureMaximumLength(item.ExternalIdentifier, 40, "...")
                                 </td>
                             </tr>
@@ -198,7 +198,8 @@
                     {
                         <div class="inputs">
                             @Html.LabelFor(model => model.VatNumber, new { }, ":")
-                            @Html.EditorFor(model => model.VatNumber)&nbsp;&nbsp;&nbsp;@Model.VatNumberStatusNote
+                            @Html.EditorFor(model => model.VatNumber)
+                            <span class="vat-status">@Model.VatNumberStatusNote</span>
                             <span class="vat-note"><em>@T("Account.Fields.VatNumber.Note")</em></span>
                         </div>
                     }
@@ -316,18 +317,25 @@
                 </div>
             </div>
                     }
-                    if (Model.NewsletterEnabled)
+                    if (Model.NewsletterEnabled || Model.CustomerAttributes.Count > 0)
                     {
             <div class="fieldset">
                 <div class="title">
                     <strong>@T("Account.Options")</strong>
                 </div>
                 <div class="form-fields">
-                    <div class="inputs">
-                        @Html.LabelFor(model => model.Newsletter, new { }, ":")
-                        @Html.EditorFor(model => model.Newsletter)
-                        @Html.ValidationMessageFor(model => model.Newsletter)
-                    </div>
+                    @if (Model.NewsletterEnabled)
+                    {
+                        <div class="inputs">
+                            @Html.LabelFor(model => model.Newsletter, new {}, ":")
+                            @Html.EditorFor(model => model.Newsletter)
+                            @Html.ValidationMessageFor(model => model.Newsletter)
+                        </div>
+                    }
+                    @if (Model.CustomerAttributes.Count > 0)
+                    {
+                        @Html.Partial("_CustomerAttributes", Model.CustomerAttributes)
+                    }
                 </div>
             </div>
                     }

@@ -57,14 +57,14 @@
                     {
                         <div class="inputs">
                             <label>@T("Account.Fields.Gender"):</label>
-                            <span class="gender">
+                            <div class="gender">
                                 @Html.RadioButton("Gender", "M", (Model.Gender == "M"), new { id = "gender-male" })
-                                <span class="forcheckbox" for="gender-male">@T("Account.Fields.Gender.Male")</span>
-                            </span>
-                            <span class="gender">
+                                <label class="forcheckbox" for="gender-male">@T("Account.Fields.Gender.Male")</label>
+                            </div>
+                            <div class="gender">
                                 @Html.RadioButton("Gender", "F", (Model.Gender == "F"), new { id = "gender-female" })
-                                <span class="forcheckbox" for="gender-female">@T("Account.Fields.Gender.Female")</span>
-                            </span>
+                                <label class="forcheckbox" for="gender-female">@T("Account.Fields.Gender.Female")</label>
+                            </div>
                         </div>
                     }
                     <div class="inputs">
@@ -141,7 +141,7 @@
                         {
                             <div class="inputs">
                                 @Html.LabelFor(model => model.VatNumber, new { }, ":")
-                                @Html.EditorFor(model => model.VatNumber)&nbsp;&nbsp;&nbsp;@Model.VatNumberStatusNote
+                                @Html.EditorFor(model => model.VatNumber)
                                 <span class="vat-note"><em>@T("Account.Fields.VatNumber.Note")</em></span>
                             </div>
                         }
@@ -256,18 +256,25 @@
                     </div>
                 </div>
             }
-            @if (Model.NewsletterEnabled)
+            @if (Model.NewsletterEnabled || Model.CustomerAttributes.Count > 0)
             {
                 <div class="fieldset">
                     <div class="title">
                         <strong>@T("Account.Options")</strong>
                     </div>
                     <div class="form-fields">
-                        <div class="inputs">
-                            @Html.LabelFor(model => model.Newsletter, new { }, ":")
-                            @Html.EditorFor(model => model.Newsletter)
-                            @Html.ValidationMessageFor(model => model.Newsletter)
-                        </div>
+                        @if (Model.NewsletterEnabled)
+                        {
+                            <div class="inputs">
+                                @Html.LabelFor(model => model.Newsletter, new {}, ":")
+                                @Html.EditorFor(model => model.Newsletter)
+                                @Html.ValidationMessageFor(model => model.Newsletter)
+                            </div>
+                        }
+                        @if (Model.CustomerAttributes.Count > 0)
+                        {
+                            @Html.Partial("_CustomerAttributes", Model.CustomerAttributes)
+                        }
                     </div>
                 </div>
             }
@@ -334,7 +341,7 @@
                 <div class="accept-privacy-policy">
                     <input id="accept-privacy-policy" type="checkbox" name="accept-privacy-policy" />
                     <label for="accept-privacy-policy">@T("Account.Fields.AcceptPrivacyPolicy")</label>
-                    <a class="read" href='@Url.RouteUrl("Topic", new { SystemName = "privacyinfo" })'>@T("Account.Fields.AcceptPrivacyPolicy.Read")</a>
+                    <a class="read" href='@Url.RouteUrl("Topic", new { SeName = Html.GetTopicSeName("privacyinfo") })'>@T("Account.Fields.AcceptPrivacyPolicy.Read")</a>
                 </div>
             }
             <div class="buttons">

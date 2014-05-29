@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Nop.Core;
 using Nop.Plugin.Tax.CountryStateZip.Domain;
 
@@ -20,17 +19,6 @@ namespace Nop.Plugin.Tax.CountryStateZip.Services
         /// </summary>
         /// <returns>Tax rates</returns>
         IPagedList<TaxRate> GetAllTaxRates(int pageIndex = 0, int pageSize = int.MaxValue);
-
-        /// <summary>
-        /// Gets all tax rates
-        /// </summary>
-        /// <param name="taxCategoryId">The tax category identifier</param>
-        /// <param name="countryId">The country identifier</param>
-        /// <param name="stateProvinceId">The state/province identifier</param>
-        /// <param name="zip">The zip</param>
-        /// <returns>Tax rates</returns>
-        IList<TaxRate> GetAllTaxRates(int taxCategoryId, int countryId,
-            int stateProvinceId, string zip);
 
         /// <summary>
         /// Gets a tax rate

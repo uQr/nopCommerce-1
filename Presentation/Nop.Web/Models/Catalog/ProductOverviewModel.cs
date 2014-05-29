@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Nop.Web.Framework.Mvc;
 using Nop.Web.Models.Media;
 
@@ -11,6 +12,7 @@ namespace Nop.Web.Models.Catalog
             ProductPrice = new ProductPriceModel();
             DefaultPictureModel = new PictureModel();
             SpecificationAttributeModels = new List<ProductSpecificationModel>();
+            ReviewOverviewModel = new ProductReviewOverviewModel();
         }
 
         public string Name { get; set; }
@@ -24,6 +26,8 @@ namespace Nop.Web.Models.Catalog
         public PictureModel DefaultPictureModel { get; set; }
         //specification attributes
         public IList<ProductSpecificationModel> SpecificationAttributeModels { get; set; }
+        //price
+        public ProductReviewOverviewModel ReviewOverviewModel { get; set; }
 
 		#region Nested Classes
 
@@ -36,8 +40,14 @@ namespace Nop.Web.Models.Catalog
             public bool DisableWishlistButton { get; set; }
 
             public bool AvailableForPreOrder { get; set; }
+            public DateTime? PreOrderAvailabilityStartDateTimeUtc { get; set; }
 
             public bool ForceRedirectionAfterAddingToCart { get; set; }
+
+            /// <summary>
+            /// A value indicating whether we should display tax/shipping info (used in Germany)
+            /// </summary>
+            public bool DisplayTaxShippingInfo { get; set; }
         }
 
 		#endregion

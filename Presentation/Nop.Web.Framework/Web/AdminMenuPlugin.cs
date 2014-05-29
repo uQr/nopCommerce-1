@@ -1,10 +1,20 @@
 ﻿using Nop.Core.Plugins;
-using Telerik.Web.Mvc.UI;
+using Nop.Web.Framework.Menu;
 
 namespace Nop.Web.Framework.Web
 {
     public interface IAdminMenuPlugin : IPlugin
     {
-        void BuildMenuItem(MenuItemBuilder menuItemBuilder);
+        /// <summary>
+        /// Authenticate a user (can he see this plugin menu item?)
+        /// </summary>
+        /// <returns></returns>
+        bool Authenticate();
+
+        /// <summary>
+        /// Build menu item
+        /// </summary>
+        /// <returns>Site map item</returns>
+        SiteMapNode BuildMenuItem();
     }
 }

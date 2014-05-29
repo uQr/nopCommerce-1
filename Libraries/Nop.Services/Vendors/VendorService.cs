@@ -70,13 +70,13 @@ namespace Nop.Services.Vendors
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <returns>Vendors</returns>
-        public virtual IPagedList<Vendor> GetAllVendors(int pageIndex, int pageSize, bool showHidden = false)
+        public virtual IPagedList<Vendor> GetAllVendors(int pageIndex = 0, int pageSize = int.MaxValue, bool showHidden = false)
         {
             var query = _vendorRepository.Table;
             if (!showHidden)
-                query = query.Where(a => a.Active);
-            query = query.Where(a => !a.Deleted);
-            query = query.OrderBy(a => a.Name);
+                query = query.Where(v => v.Active);
+            query = query.Where(v => !v.Deleted);
+            query = query.OrderBy(v => v.DisplayOrder).ThenBy(v => v.Name);
 
             var vendors = new PagedList<Vendor>(query, pageIndex, pageSize);
             return vendors;

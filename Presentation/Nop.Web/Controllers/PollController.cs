@@ -6,7 +6,6 @@ using Nop.Core;
 using Nop.Core.Caching;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Polls;
-using Nop.Services.Customers;
 using Nop.Services.Localization;
 using Nop.Services.Polls;
 using Nop.Web.Framework.Controllers;
@@ -15,7 +14,7 @@ using Nop.Web.Models.Polls;
 
 namespace Nop.Web.Controllers
 {
-    public partial class PollController : BaseNopController
+    public partial class PollController : BasePublicController
     {
         #region Fields
 

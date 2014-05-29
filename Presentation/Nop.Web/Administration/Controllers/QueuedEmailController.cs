@@ -9,12 +9,11 @@ using Nop.Services.Localization;
 using Nop.Services.Messages;
 using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-	public partial class QueuedEmailController : BaseNopController
+	public partial class QueuedEmailController : BaseAdminController
 	{
 		private readonly IQueuedEmailService _queuedEmailService;
         private readonly IDateTimeHelper _dateTimeHelper;
@@ -45,8 +44,8 @@ namespace Nop.Admin.Controllers
             return View(model);
 		}
 
-		[GridAction(EnableCustomBinding = true)]
-		public ActionResult QueuedEmailList(GridCommand command, QueuedEmailListModel model)
+		[HttpPost]
+		public ActionResult QueuedEmailList(DataSourceRequest command, QueuedEmailListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMessageQueue))
                 return AccessDeniedView();
@@ -61,7 +60,7 @@ namespace Nop.Admin.Controllers
                 startDateValue, endDateValue, 
                 model.SearchLoadNotSent, model.SearchMaxSentTries, true,
                 command.Page - 1, command.PageSize);
-            var gridModel = new GridModel<QueuedEmailModel>
+            var gridModel = new DataSourceResult
             {
                 Data = queuedEmails.Select(x => {
                     var m = x.ToModel();
@@ -107,7 +106,7 @@ namespace Nop.Admin.Controllers
 		}
 
         [HttpPost, ActionName("Edit")]
-        [ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [ParameterBasedOnFormName("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(QueuedEmailModel model, bool continueEditing)
         {
@@ -157,6 +156,8 @@ namespace Nop.Admin.Controllers
                 Bcc = queuedEmail.Bcc,
                 Subject = queuedEmail.Subject,
                 Body = queuedEmail.Body,
+                AttachmentFilePath = queuedEmail.AttachmentFilePath,
+                AttachmentFileName = queuedEmail.AttachmentFileName,
                 CreatedOnUtc = DateTime.UtcNow,
                 EmailAccountId = queuedEmail.EmailAccountId
             };
@@ -198,5 +199,19 @@ namespace Nop.Admin.Controllers
 
             return Json(new { Result = true });
         }
+
+        [HttpPost, ActionName("List")]
+        [FormValueRequired("delete-all")]
+        public ActionResult DeleteAll()
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageMessageQueue))
+                return AccessDeniedView();
+
+            _queuedEmailService.DeleteAllEmails();
+
+            SuccessNotification(_localizationService.GetResource("Admin.System.QueuedEmails.DeletedAll"));
+            return RedirectToAction("List");
+        }
+
 	}
 }

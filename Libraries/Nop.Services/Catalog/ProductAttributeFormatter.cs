@@ -4,6 +4,7 @@ using System.Web;
 using Nop.Core;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
+using Nop.Core.Domain.Orders;
 using Nop.Core.Html;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
@@ -26,6 +27,8 @@ namespace Nop.Services.Catalog
         private readonly IPriceFormatter _priceFormatter;
         private readonly IDownloadService _downloadService;
         private readonly IWebHelper _webHelper;
+        private readonly IPriceCalculationService _priceCalculationService;
+        private readonly ShoppingCartSettings _shoppingCartSettings;
 
         public ProductAttributeFormatter(IWorkContext workContext,
             IProductAttributeService productAttributeService,
@@ -35,7 +38,9 @@ namespace Nop.Services.Catalog
             ITaxService taxService,
             IPriceFormatter priceFormatter,
             IDownloadService downloadService,
-            IWebHelper webHelper)
+            IWebHelper webHelper,
+            IPriceCalculationService priceCalculationService,
+            ShoppingCartSettings shoppingCartSettings)
         {
             this._workContext = workContext;
             this._productAttributeService = productAttributeService;
@@ -46,24 +51,26 @@ namespace Nop.Services.Catalog
             this._priceFormatter = priceFormatter;
             this._downloadService = downloadService;
             this._webHelper = webHelper;
+            this._priceCalculationService = priceCalculationService;
+            this._shoppingCartSettings = shoppingCartSettings;
         }
 
         /// <summary>
         /// Formats attributes
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
+        /// <param name="product">Product</param>
         /// <param name="attributes">Attributes</param>
         /// <returns>Attributes</returns>
-        public string FormatAttributes(ProductVariant productVariant, string attributes)
+        public string FormatAttributes(Product product, string attributes)
         {
             var customer = _workContext.CurrentCustomer;
-            return FormatAttributes(productVariant, attributes, customer);
+            return FormatAttributes(product, attributes, customer);
         }
         
         /// <summary>
         /// Formats attributes
         /// </summary>
-        /// <param name="productVariant">Product variant</param>
+        /// <param name="product">Product</param>
         /// <param name="attributes">Attributes</param>
         /// <param name="customer">Customer</param>
         /// <param name="serapator">Serapator</param>
@@ -73,7 +80,7 @@ namespace Nop.Services.Catalog
         /// <param name="renderGiftCardAttributes">A value indicating whether to render gift card attributes</param>
         /// <param name="allowHyperlinks">A value indicating whether to HTML hyperink tags could be rendered (if required)</param>
         /// <returns>Attributes</returns>
-        public string FormatAttributes(ProductVariant productVariant, string attributes,
+        public string FormatAttributes(Product product, string attributes,
             Customer customer, string serapator = "<br />", bool htmlEncode = true, bool renderPrices = true,
             bool renderProductAttributes = true, bool renderGiftCardAttributes = true,
             bool allowHyperlinks = true)
@@ -158,10 +165,12 @@ namespace Nop.Services.Catalog
                                 if (pvaValue != null)
                                 {
                                     pvaAttribute = string.Format("{0}: {1}", pva.ProductAttribute.GetLocalized(a => a.Name, _workContext.WorkingLanguage.Id), pvaValue.GetLocalized(a => a.Name, _workContext.WorkingLanguage.Id));
+                                    
                                     if (renderPrices)
                                     {
                                         decimal taxRate = decimal.Zero;
-                                        decimal priceAdjustmentBase = _taxService.GetProductPrice(productVariant, pvaValue.PriceAdjustment, customer, out taxRate);
+                                        decimal pvaValuePriceAdjustment = _priceCalculationService.GetProductVariantAttributeValuePriceAdjustment(pvaValue);
+                                        decimal priceAdjustmentBase = _taxService.GetProductPrice(product, pvaValuePriceAdjustment, customer, out taxRate);
                                         decimal priceAdjustment = _currencyService.ConvertFromPrimaryStoreCurrency(priceAdjustmentBase, _workContext.WorkingCurrency);
                                         if (priceAdjustmentBase > 0)
                                         {
@@ -172,6 +181,18 @@ namespace Nop.Services.Catalog
                                         {
                                             string priceAdjustmentStr = _priceFormatter.FormatPrice(-priceAdjustment, false, false);
                                             pvaAttribute += string.Format(" [-{0}]", priceAdjustmentStr);
+                                        }
+                                    }
+
+                                    //display quantity
+                                    if (_shoppingCartSettings.RenderAssociatedAttributeValueQuantity && 
+                                        pvaValue.AttributeValueType == AttributeValueType.AssociatedToProduct)
+                                    {
+                                        //render only when more than 1
+                                        if (pvaValue.Quantity > 1)
+                                        {
+                                            //TODO localize resource
+                                            pvaAttribute += string.Format(" - qty {0}", pvaValue.Quantity);
                                         }
                                     }
                                 }                               
@@ -194,7 +215,7 @@ namespace Nop.Services.Catalog
             //gift cards
             if (renderGiftCardAttributes)
             {
-                if (productVariant.IsGiftCard)
+                if (product.IsGiftCard)
                 {
                     string giftCardRecipientName = "";
                     string giftCardRecipientEmail = "";
@@ -205,11 +226,11 @@ namespace Nop.Services.Catalog
                         out giftCardSenderName, out giftCardSenderEmail, out giftCardMessage);
 
                     //sender
-                    var giftCardFrom = productVariant.GiftCardType == GiftCardType.Virtual ?
+                    var giftCardFrom = product.GiftCardType == GiftCardType.Virtual ?
                         string.Format(_localizationService.GetResource("GiftCardAttribute.From.Virtual"), giftCardSenderName, giftCardSenderEmail) :
                         string.Format(_localizationService.GetResource("GiftCardAttribute.From.Physical"), giftCardSenderName);
                     //recipient
-                    var giftCardFor = productVariant.GiftCardType == GiftCardType.Virtual ?
+                    var giftCardFor = product.GiftCardType == GiftCardType.Virtual ?
                         string.Format(_localizationService.GetResource("GiftCardAttribute.For.Virtual"), giftCardRecipientName, giftCardRecipientEmail) :
                         string.Format(_localizationService.GetResource("GiftCardAttribute.For.Physical"), giftCardRecipientName);
 

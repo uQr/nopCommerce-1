@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Web.Mvc;
-using Nop.Core.Domain.Common;
-using Nop.Core.Domain.Seo;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Mvc;
 
@@ -37,9 +35,13 @@ namespace Nop.Admin.Models.Settings
         {
             public StoreInformationSettingsModel()
             {
-                this.AvailableStoreThemesForDesktops = new List<SelectListItem>();
-                this.AvailableStoreThemesForMobileDevices = new List<SelectListItem>();
+                this.AvailableStoreThemesForDesktops = new List<ThemeConfigurationModel>();
+                this.AvailableStoreThemesForMobileDevices = new List<ThemeConfigurationModel>();
             }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.ResponsiveDesignSupported")]
+            public bool ResponsiveDesignSupported { get; set; }
+            public bool ResponsiveDesignSupported_OverrideForStore { get; set; }
 
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.MobileDevicesSupported")]
             public bool MobileDevicesSupported { get; set; }
@@ -57,13 +59,13 @@ namespace Nop.Admin.Models.Settings
             [AllowHtml]
             public string DefaultStoreThemeForDesktops { get; set; }
             public bool DefaultStoreThemeForDesktops_OverrideForStore { get; set; }
-            public IList<SelectListItem> AvailableStoreThemesForDesktops { get; set; }
+            public IList<ThemeConfigurationModel> AvailableStoreThemesForDesktops { get; set; }
 
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.DefaultStoreThemeForMobileDevices")]
             [AllowHtml]
             public string DefaultStoreThemeForMobileDevices { get; set; }
             public bool DefaultStoreThemeForMobileDevices_OverrideForStore { get; set; }
-            public IList<SelectListItem> AvailableStoreThemesForMobileDevices { get; set; }
+            public IList<ThemeConfigurationModel> AvailableStoreThemesForMobileDevices { get; set; }
 
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.AllowCustomerToSelectTheme")]
             public bool AllowCustomerToSelectTheme { get; set; }
@@ -72,6 +74,36 @@ namespace Nop.Admin.Models.Settings
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.DisplayEuCookieLawWarning")]
             public bool DisplayEuCookieLawWarning { get; set; }
             public bool DisplayEuCookieLawWarning_OverrideForStore { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.FacebookLink")]
+            public string FacebookLink { get; set; }
+            public bool FacebookLink_OverrideForStore { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.TwitterLink")]
+            public string TwitterLink { get; set; }
+            public bool TwitterLink_OverrideForStore { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.YoutubeLink")]
+            public string YoutubeLink { get; set; }
+            public bool YoutubeLink_OverrideForStore { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.GooglePlusLink")]
+            public string GooglePlusLink { get; set; }
+            public bool GooglePlusLink_OverrideForStore { get; set; }
+            
+            #region Nested classes
+
+            public partial class ThemeConfigurationModel
+            {
+                public string ThemeName { get; set; }
+                public string ThemeTitle { get; set; }
+                public string PreviewImageUrl { get; set; }
+                public string PreviewText { get; set; }
+                public bool SupportRtl { get; set; }
+                public bool Selected { get; set; }
+            }
+
+            #endregion
         }
 
         public partial class SeoSettingsModel : BaseNopModel
@@ -108,6 +140,19 @@ namespace Nop.Admin.Models.Settings
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.CanonicalUrlsEnabled")]
             public bool CanonicalUrlsEnabled { get; set; }
             public bool CanonicalUrlsEnabled_OverrideForStore { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.WwwRequirement")]
+            public int WwwRequirement { get; set; }
+            public bool WwwRequirement_OverrideForStore { get; set; }
+            public SelectList WwwRequirementValues { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.EnableJsBundling")]
+            public bool EnableJsBundling { get; set; }
+            public bool EnableJsBundling_OverrideForStore { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.EnableCssBundling")]
+            public bool EnableCssBundling { get; set; }
+            public bool EnableCssBundling_OverrideForStore { get; set; }
         }
 
         public partial class SecuritySettingsModel : BaseNopModel
@@ -120,9 +165,8 @@ namespace Nop.Admin.Models.Settings
             [AllowHtml]
             public string AdminAreaAllowedIpAddresses { get; set; }
 
-            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.HideAdminMenuItemsBasedOnPermissions")]
-            public bool HideAdminMenuItemsBasedOnPermissions { get; set; }
-
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.ForceSslForAllPages")]
+            public bool ForceSslForAllPages { get; set; }
 
 
 
@@ -164,10 +208,6 @@ namespace Nop.Admin.Models.Settings
 
         public partial class PdfSettingsModel : BaseNopModel
         {
-            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.PdfEnabled")]
-            public bool Enabled { get; set; }
-            public bool Enabled_OverrideForStore { get; set; }
-
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.PdfLetterPageSizeEnabled")]
             public bool LetterPageSizeEnabled { get; set; }
             public bool LetterPageSizeEnabled_OverrideForStore { get; set; }
@@ -176,6 +216,15 @@ namespace Nop.Admin.Models.Settings
             [UIHint("Picture")]
             public int LogoPictureId { get; set; }
             public bool LogoPictureId_OverrideForStore { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.InvoiceFooterTextColumn1")]
+            public string InvoiceFooterTextColumn1 { get; set; }
+            public bool InvoiceFooterTextColumn1_OverrideForStore { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.InvoiceFooterTextColumn2")]
+            public string InvoiceFooterTextColumn2 { get; set; }
+            public bool InvoiceFooterTextColumn2_OverrideForStore { get; set; }
+
         }
 
         public partial class LocalizationSettingsModel : BaseNopModel
@@ -186,8 +235,17 @@ namespace Nop.Admin.Models.Settings
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.SeoFriendlyUrlsForLanguagesEnabled")]
             public bool SeoFriendlyUrlsForLanguagesEnabled { get; set; }
 
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.AutomaticallyDetectLanguage")]
+            public bool AutomaticallyDetectLanguage { get; set; }
+
             [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.LoadAllLocaleRecordsOnStartup")]
             public bool LoadAllLocaleRecordsOnStartup { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.LoadAllLocalizedPropertiesOnStartup")]
+            public bool LoadAllLocalizedPropertiesOnStartup { get; set; }
+
+            [NopResourceDisplayName("Admin.Configuration.Settings.GeneralCommon.LoadAllUrlRecordsOnStartup")]
+            public bool LoadAllUrlRecordsOnStartup { get; set; }
         }
 
         public partial class FullTextSettingsModel : BaseNopModel

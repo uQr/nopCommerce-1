@@ -105,8 +105,8 @@
 .order-summary-content .cart .cart-item-row .unitprice,.wishlist-content .cart .cart-item-row .unitprice{color:Green;}
 .order-summary-content .cart .cart-item-row .totalprice,.wishlist-content .cart .cart-item-row .totalprice{color:Green;}
 .order-summary-content .cart .cart-item-row .remove,.wishlist-content .cart .cart-item-row .remove{}
-.order-summary-content .cart .cart-item-row .qty-input,.wishlist-content .cart .cart-item-row .qty-input{width:100px;}
-.order-summary-content .cart-footer{}
+.order-summary-content .cart .cart-item-row .qty-input,.wishlist-content .cart .cart-item-row .qty-input{}
+.order-summary-content .cart-footer{}re
 .order-summary-content .total-info{margin:0;}
 .cart-total-left{text-align:left;vertical-align:top;font-weight:700;}
 .cart-total-left-below{text-align:left;vertical-align:top;height:30px;}
@@ -122,7 +122,7 @@
 .order-summary-content .checkout-attributes textarea{width:300px;height:150px;}
 .order-summary-content .min-amount-warning{margin:0;padding:10px 0 10px 10px;}
 .order-summary-content .terms-of-service{margin:0;padding:0;}
-.order-summary-content .terms-of-service .read{text-decoration:underline;}
+.confirm-order .terms-of-service{margin:0;padding:0;}
 .order-summary-content .common-buttons{margin:0;padding:10px;}
 .order-summary-content .checkout-buttons{margin:0;padding:0;}
 .order-summary-content .addon-buttons{clear:both;margin:0;padding:10px;text-align:right;}
@@ -177,6 +177,7 @@
 .order-details-page .products-box .unitprice{}
 .order-details-page .products-box .qty{}
 .order-details-page .products-box .subtotal{}
+.order-details-page .ordernotes-box .download a{color:#FFF;}
 
 
 /* SHIPMENTS */
@@ -207,6 +208,8 @@
 
 /* REGISTRATION */
 .registration-page{}
+.registration-page ul.option-list{display:inline-block;}
+.registration-page ul.option-list li{list-style:none;display:inline-block;}
 .registration-page .page-body{}
 .registration-page .section-body{text-align:left;padding:10px;border:1px solid #d7d7d7;height:auto;}
 .registration-page .accept-privacy-policy{}
@@ -348,7 +351,7 @@
 
 
 /* CATALOG PAGES */
-.category-page .category-description,.manufacturer-page .manufacturer-description{font-size:1.1em;}
+.category-page .category-description,.manufacturer-page .manufacturer-description,.vendor-page .vendor-description{font-size:1.1em;}
 
 
 /* CUSTOMER ACCOUNT PAGES */
@@ -383,6 +386,8 @@
 .forum-subscriptions-page .no-data{}
 .forum-subscriptions-page .buttons{}
 .customer-info-page{}
+.customer-info-page ul.option-list{display:inline-block;}
+.customer-info-page ul.option-list li{list-style:none;display:inline-block;}
 .customer-info-page .buttons{}
 .my-account-home-page{}
 .order-list-page{}
@@ -422,17 +427,18 @@
 .product-details-page .picture-thumbs{}
 .product-details-page .overview{margin-right:15px;margin-top:25px;padding:5px;}
 .product-details-page .product-name{color:#f93;font-size:1.3em;margin-bottom:1em;}
-.product-details-page .short-description,.product-details-page .manufacturers,.product-details-page .sku,.product-details-page .manufacturer-part-number,.product-details-page .stock,.product-details-page .gtin{margin-bottom:.3em;font-size:1.1em;}
+.product-details-page .short-description,.product-details-page .manufacturers,.product-details-page .sku,.product-details-page .manufacturer-part-number,.product-details-page .stock,.product-details-page .gtin,.product-details-page .delivery-date,.product-details-page .free-shipping{margin-bottom:.3em;font-size:1.1em;}
 .product-details-page .full-description{border-top:solid 1px #d3d3d3;clear:both;margin-bottom:.3em;}
 .product-details-page .back-in-stock-subscription{}
 .product-details-page .product-reviews-overview{margin-top:20px;margin-bottom:20px;}
-.product-details-page .product-reviews-overview .product-review-box{margin-right:5px;width:69px;height:13px;}
-.product-details-page .product-review-box .rating{height:13px;width:55px;background:url(images/star-x-inactive.gif) 0 0 repeat-x;}
-.product-details-page .product-review-box .rating div{height:12px;background:url(images/star-x-active.gif) 0 0 repeat-x;}
+.product-details-page .product-reviews-overview .product-review-box{margin-right:5px;}
+.rating{height:16px;width:80px;background:url(images/star-x-inactive.png) 0 0 repeat-x;}
+.rating div{height:16px;background:url(images/star-x-active.png) 0 0 repeat-x;}
 .product-details-page .product-reviews-overview .product-review-links{margin:0;}
 .product-details-page .product-no-reviews{margin-top:20px;margin-bottom:20px;}
 .product-details-page .product-variant-list{}
 .product-details-page .product-variant-line{clear:both;margin-bottom:20px;padding-bottom:20px;margin-top:10px;border-bottom:solid 1px #d3d3d3;}
+.product-details-page .no-associated-products{font-weight:bold;}
 .product-details-page .variant-picture{margin-bottom:15px;}
 .product-details-page .variant-name{font-size:1.3em;margin-bottom:.3em;}
 .product-details-page .variant-description{clear:both;margin-bottom:.3em;}
@@ -445,9 +451,9 @@
 .product-details-page .prices .old-product-price span{color:red;text-decoration:line-through;}
 .product-details-page .add-to-cart{padding-top:10px;width:100%;}
 .product-details-page .add-to-cart .enter-price-label{display:inline-block;margin-right:10px;}
-.product-details-page .add-to-cart .enter-price-input{display:inline-block;width:60px;}
+.product-details-page .add-to-cart .enter-price-input{display:inline-block;}
 .product-details-page .add-to-cart .qty-label{display:inline-block;margin-right:10px;}
-.product-details-page .add-to-cart .qty-input{display:inline-block;width:40px;}
+.product-details-page .add-to-cart .qty-input{display:inline-block;}
 .product-details-page .add-to-cart .qty-dropdown{}
 .product-details-page .attributes{}
 .product-details-page .attributes .text-prompt{font-weight:bold;}
@@ -496,9 +502,7 @@
 .product-review-list .title{font-weight:700;font-size:1.1em;color:#3a3a3a;}
 .product-review-list .product-review-item{font-weight:normal;}
 .product-review-list .product-review-item .review-title{font-weight:700;float:left;margin-bottom:5px;}
-.product-review-list .product-review-item .product-review-box{float:right;margin-right:5px;width:69px;height:13px;}
-.product-review-list .product-review-item .product-review-box .rating{height:13px;width:55px;background:url(images/star-x-inactive.gif) 0 0 repeat-x;}
-.product-review-list .product-review-item .product-review-box .rating div{height:12px;background:url(images/star-x-active.gif) 0 0 repeat-x;}
+.product-review-list .product-review-item .product-review-box{float:right;margin-right:5px;}
 .product-review-list .product-review-item .review-text{margin-bottom:5px;clear:both;}
 .product-review-list .product-review-item .review-info{margin-bottom:5px;}
 .product-review-list .product-review-item .review-info .separator{margin:0 2px;}
@@ -574,7 +578,6 @@
 
 /* FORUM TOPIC */
 .forum-topic-page{}
-.forum-topic-page .manage{}
 .forum-topic-page .topic-header{}
 .forum-topic-page .topic-header .topic-options,.topic-footer .topic-options{}
 .forum-topic-page .topic-header .topic-options a,.topic-footer .topic-options a{}
@@ -651,3 +654,8 @@ pre{white-space:pre-wrap;/* css-3 */white-space:0;/* Mozilla, since 1999 */white
 .csharpcode .attr{color:red;}
 .csharpcode .alt{background-color:#f4f4f4;width:100%;margin:0;}
 .csharpcode .lnum{color:#606060;}
+
+/* recaptcha issue fixed*/
+/* by default it's overriden by jQuery mobile style - "input.ui-input-text, textarea.ui-input-text"'*/
+/* and it breaks the layout*/
+.recaptcha_input_area input.ui-input-text{display:inline !important;}

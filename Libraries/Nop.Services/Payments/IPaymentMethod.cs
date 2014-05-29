@@ -126,7 +126,12 @@ namespace Nop.Services.Payments
         /// Gets a payment method type
         /// </summary>
         PaymentMethodType PaymentMethodType { get; }
-        
+
+        /// <summary>
+        /// Gets a value indicating whether we should display a payment information page for this plugin
+        /// </summary>
+        bool SkipPaymentInfo { get; }
+
         #endregion
     }
 }

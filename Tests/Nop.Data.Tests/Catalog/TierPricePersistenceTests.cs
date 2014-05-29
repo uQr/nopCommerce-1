@@ -13,19 +13,20 @@ namespace Nop.Data.Tests.Catalog
         public void Can_save_and_load_tierPrice()
         {
             var tierPrice = new TierPrice
-                      {
-                          Quantity = 1,
-                          Price = 2.1M,
-                          ProductVariant = GetTestProductVariant(),
-                      };
+            {
+                StoreId = 7,
+                Quantity = 1,
+                Price = 2.1M,
+                Product = GetTestProduct(),
+           };
 
             var fromDb = SaveAndLoadEntity(tierPrice);
             fromDb.ShouldNotBeNull();
+            fromDb.StoreId.ShouldEqual(7);
             fromDb.Quantity.ShouldEqual(1);
             fromDb.Price.ShouldEqual(2.1M);
 
-            fromDb.ProductVariant.ShouldNotBeNull();
-            fromDb.ProductVariant.Name.ShouldEqual("Product variant name 1");
+            fromDb.Product.ShouldNotBeNull();
         }
 
         [Test]
@@ -35,7 +36,7 @@ namespace Nop.Data.Tests.Catalog
             {
                 Quantity = 1,
                 Price = 2,
-                ProductVariant = GetTestProductVariant(),
+                Product = GetTestProduct(),
                 CustomerRole = new CustomerRole()
                 {
                     Name = "Administrators",
@@ -54,21 +55,13 @@ namespace Nop.Data.Tests.Catalog
             fromDb.CustomerRole.Name.ShouldEqual("Administrators");
         }
 
-        protected ProductVariant GetTestProductVariant()
+        protected Product GetTestProduct()
         {
-            return new ProductVariant()
+            return new Product
             {
-                Name = "Product variant name 1",
+                Name = "Product name 1",
                 CreatedOnUtc = new DateTime(2010, 01, 03),
                 UpdatedOnUtc = new DateTime(2010, 01, 04),
-                Product = new Product()
-                {
-                    Name = "Name 1",
-                    Published = true,
-                    Deleted = false,
-                    CreatedOnUtc = new DateTime(2010, 01, 01),
-                    UpdatedOnUtc = new DateTime(2010, 01, 02),
-                }
             };
         }
     }

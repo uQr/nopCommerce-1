@@ -90,5 +90,21 @@ namespace Nop.Core.Domain.Orders
         /// Gets or sets a value indicating whether to round calculated prices and total during calculation
         /// </summary>
         public bool RoundPricesDuringCalculation { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether we should group shopping cart items for the same products
+        /// For example, a customer could have two shopping cart items for the same products (different product attributes)
+        /// </summary>
+        public bool GroupTierPricesForDistinctShoppingCartItems  { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether a customer will beable to edit products in the cart
+        /// </summary>
+        public bool AllowCartItemEditing { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether a customer will see quantity of attribute values associated to products (when qty > 1)
+        /// </summary>
+        public bool RenderAssociatedAttributeValueQuantity { get; set; }
     }
 }

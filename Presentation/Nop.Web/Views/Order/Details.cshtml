@@ -26,10 +26,7 @@
         <div class="page-title">
             <h1>@T("Order.OrderInformation")</h1>
             <a href="@Url.RouteUrl("PrintOrderDetails", new { orderId = Model.Id })" target="_blank" class="button-2 print-order-button">@T("Order.Print")</a>
-            @if (Model.DisplayPdfInvoice)
-            {
-                <a href="@Url.RouteUrl("GetOrderPdfInvoice", new { orderId = Model.Id })" class="button-2 pdf-order-button">@T("Order.GetPDFInvoice")</a>
-            }
+            <a href="@Url.RouteUrl("GetOrderPdfInvoice", new { orderId = Model.Id })" class="button-2 pdf-order-button">@T("Order.GetPDFInvoice")</a>
         </div>
     }
     <div class="page-body">
@@ -147,9 +144,9 @@
                                     <li class="repost">
                                         @using (Html.BeginRouteForm("OrderDetails", FormMethod.Post))
                                         {
-                                            <input type="submit" name="repost-payment" value="@T("Order.CompletePayment")" class="button-1 re-order-button" />
+                                            <input type="submit" name="repost-payment" value="@T("Order.RetryPayment")" class="button-1 re-order-button" />
                                             <p class="hint">
-                                                <em>@T("Order.CompletePayment.Hint")</em>
+                                                <em>@T("Order.RetryPayment.Hint")</em>
                                             </p>
                                         }
                                     </li>
@@ -277,20 +274,20 @@
                         <tr>
                             @if (Model.ShowSku)
                             {
-                                <th class="a-center">
+                                <th class="a-center sku">
                                     @T("Order.Product(s).SKU")
                                 </th>
                             }
-                            <th class="a-center">
+                            <th class="a-center name">
                                 @T("Order.Product(s).Name")
                             </th>
-                            <th class="a-center">
+                            <th class="a-center price">
                                 @T("Order.Product(s).Price")
                             </th>
-                            <th class="a-center">
+                            <th class="a-center quantity">
                                 @T("Order.Product(s).Quantity")
                             </th>
-                            <th class="a-center">
+                            <th class="a-center total">
                                 @T("Order.Product(s).Total")
                             </th>
                         </tr>
@@ -301,14 +298,15 @@
                             <tr>
                                 @if (Model.ShowSku)
                                 {
-                                    <td class="a-left">
+                                    <td class="a-left sku">
+                                        <span class="td-title">@T("Order.Product(s).SKU"):</span>
                                         @item.Sku
                                     </td>
                                 }
-                                <td class="a-left">
+                                <td class="a-left name">
                                     @if (!Model.PrintMode)
                                     {
-                                        <em><a href="@Url.RouteUrl("Product", new { SeName = item.ProductSeName })" title="View details">@item.ProductName</a></em>
+                                        <em><a href="@Url.RouteUrl("Product", new { SeName = item.ProductSeName })">@item.ProductName</a></em>
                                     }
                                     else
                                     {
@@ -321,13 +319,16 @@
                                         </div>
                                     }
                                 </td>
-                                <td class="a-right">
+                                <td class="a-right price">
+                                    <span class="td-title">@T("Order.Product(s).Price"):</span>
                                     @item.UnitPrice
                                 </td>
-                                <td class="a-center">
+                                <td class="a-center quantity">
+                                    <span class="td-title">@T("Order.Product(s).Quantity"):</span>
                                     @item.Quantity
                                 </td>
-                                <td class="a-right">
+                                <td class="a-right total">
+                                    <span class="td-title">@T("Order.Product(s).Total"):</span>
                                     @item.SubTotal
                                 </td>
                             </tr>
@@ -349,7 +350,6 @@
                         }
                         @if (Model.IsReturnRequestAllowed)
                         {
-                            <text>&nbsp; &nbsp; &nbsp;</text>
                             <input type="button" value="@T("Order.ReturnItems")" class="button-2 return-items-button" onclick="setLocation('@Url.RouteUrl("ReturnRequest", new { orderId = Model.Id })    ')" />
                         }
                     </div>
@@ -362,8 +362,9 @@
                 <tbody>
                     <tr>
                         <td class="cart-total-left">
-                            <strong>
-                                @T("Order.SubTotal"):</strong>
+                            <span class="nobr">
+                                @T("Order.SubTotal"):
+                            </span>
                         </td>
                         <td class="cart-total-right">
                             <span class="nobr">
@@ -375,8 +376,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.SubTotalDiscount"):</strong>
+                                <span class="nobr">
+                                    @T("Order.SubTotalDiscount"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -389,8 +391,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.Shipping"):</strong>
+                                <span class="nobr">
+                                    @T("Order.Shipping"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -403,8 +406,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.PaymentMethodAdditionalFee"):</strong>
+                                <span class="nobr">
+                                    @T("Order.PaymentMethodAdditionalFee"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -419,8 +423,9 @@
                         {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @string.Format(T("Order.TaxRateLine").Text, taxRate.Rate):</strong>
+                                <span class="nobr">
+                                    @string.Format(T("Order.TaxRateLine").Text, taxRate.Rate):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -434,8 +439,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.Tax"):</strong>
+                                <span class="nobr">
+                                    @T("Order.Tax"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -448,8 +454,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @T("Order.TotalDiscount"):</strong>
+                                <span class="nobr">
+                                    @T("Order.TotalDiscount"):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -464,8 +471,9 @@
                         {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>
-                                    @string.Format(T("Order.GiftCardInfo").Text, gc.CouponCode):</strong>
+                                <span class="nobr">
+                                    @string.Format(T("Order.GiftCardInfo").Text, gc.CouponCode):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -479,7 +487,9 @@
                     {
                         <tr>
                             <td class="cart-total-left">
-                                <strong>@string.Format(T("Order.RewardPoints").Text, Model.RedeemedRewardPoints):</strong>
+                                <span class="nobr">
+                                    @string.Format(T("Order.RewardPoints").Text, Model.RedeemedRewardPoints):
+                                </span>
                             </td>
                             <td class="cart-total-right">
                                 <span class="nobr">
@@ -490,8 +500,9 @@
                     }
                     <tr>
                         <td class="cart-total-left">
-                            <strong>
-                                @T("Order.OrderTotal"):</strong>
+                            <span class="nobr">
+                                @T("Order.OrderTotal"):
+                            </span>
                         </td>
                         <td class="cart-total-right">
                             <span class="nobr"><strong>
@@ -520,19 +531,19 @@
                     </colgroup>
                     <thead>
                         <tr>
-                            <th class="a-center">
+                            <th class="a-center id">
                                 @T("Order.Shipments.ID")
                             </th>
-                            <th class="a-center">
+                            <th class="a-center tracking-number">
                                 @T("Order.Shipments.TrackingNumber")
                             </th>
-                            <th class="a-center">
+                            <th class="a-center shipped-date">
                                 @T("Order.Shipments.ShippedDate")
                             </th>
-                            <th class="a-center">
+                            <th class="a-center delivery-date">
                                 @T("Order.Shipments.DeliveryDate")
                             </th>
-                            <th class="a-center">
+                            <th class="a-center details">
                                 @T("Order.Shipments.ViewDetails")
                             </th>
                         </tr>
@@ -541,13 +552,13 @@
                         @foreach (var item in Model.Shipments)
                         {
                             <tr>
-                                <td class="a-left">
+                                <td class="a-left id">
                                     @item.Id.ToString()
                                 </td>
-                                <td class="a-left">
+                                <td class="a-left tracking-number">
                                     @item.TrackingNumber
                                 </td>
-                                <td class="a-left">
+                                <td class="a-left shipped-date">
                                     @if (item.ShippedDate.HasValue)
                                     {
                                         @item.ShippedDate.Value.ToString("D")
@@ -557,7 +568,7 @@
                                         @T("Order.Shipments.ShippedDate.NotYet")
                                     }
                                 </td>
-                                <td class="a-left">
+                                <td class="a-left delivery-date">
                                     @if (item.DeliveryDate.HasValue)
                                     {
                                         @item.DeliveryDate.Value.ToString("D")
@@ -567,7 +578,7 @@
                                         @T("Order.Shipments.DeliveryDate.NotYet")
                                     }
                                 </td>
-                                <td class="a-center">
+                                <td class="a-center details">
                                     <a href="@Url.RouteUrl("ShipmentDetails", new { shipmentId = item.Id })" title="@T("Order.Shipments.ViewDetails")">@T("Order.Shipments.ViewDetails")</a>
                                 </td>
                             </tr>
@@ -592,10 +603,10 @@
                     </colgroup>
                     <thead>
                         <tr>
-                            <th class="a-center">
+                            <th class="a-left createdon">
                                 @T("Order.Notes.CreatedOn")
                             </th>
-                            <th class="a-center">
+                            <th class="a-left note">
                                 @T("Order.Notes.Note")
                             </th>
                         </tr>
@@ -604,11 +615,17 @@
                         @foreach (var item in Model.OrderNotes)
                         {
                             <tr>
-                                <td class="a-left">
+                                <td class="a-left createdon">
                                     @item.CreatedOn.ToString()
                                 </td>
-                                <td class="a-left">
+                                <td class="a-left note">
                                     @Html.Raw(item.Note)
+                                    @if (item.HasDownload)
+                                    {
+                                        <p class="download">
+                                            <a href="@Url.RouteUrl("GetOrderNoteFile", new { ordernoteid = item.Id })">@T("Order.Notes.Download")</a>
+                                        </p>
+                                    }
                                 </td>
                             </tr>
                         }

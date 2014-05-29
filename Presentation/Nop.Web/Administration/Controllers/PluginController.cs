@@ -4,29 +4,27 @@ using System.Web.Mvc;
 using System.Web.Routing;
 using Nop.Admin.Models.Plugins;
 using Nop.Core;
+using Nop.Core.Domain.Cms;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Payments;
+using Nop.Core.Domain.Shipping;
+using Nop.Core.Domain.Tax;
 using Nop.Core.Plugins;
 using Nop.Services.Authentication.External;
 using Nop.Services.Cms;
 using Nop.Services.Common;
+using Nop.Services.Configuration;
 using Nop.Services.Localization;
-using Nop.Services.Messages;
 using Nop.Services.Payments;
 using Nop.Services.Security;
 using Nop.Services.Shipping;
+using Nop.Services.Stores;
 using Nop.Services.Tax;
-using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
-using Nop.Core.Domain.Shipping;
-using Nop.Core.Domain.Tax;
-using Nop.Core.Domain.Customers;
-using Nop.Core.Domain.Cms;
-using Nop.Services.Configuration;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-    public partial class PluginController : BaseNopController
+    public partial class PluginController : BaseAdminController
 	{
 		#region Fields
 
@@ -36,6 +34,7 @@ namespace Nop.Admin.Controllers
         private readonly IPermissionService _permissionService;
         private readonly ILanguageService _languageService;
 	    private readonly ISettingService _settingService;
+	    private readonly IStoreService _storeService;
         private readonly PaymentSettings _paymentSettings;
         private readonly ShippingSettings _shippingSettings;
         private readonly TaxSettings _taxSettings;
@@ -46,11 +45,16 @@ namespace Nop.Admin.Controllers
 		#region Constructors
 
         public PluginController(IPluginFinder pluginFinder,
-            ILocalizationService localizationService, IWebHelper webHelper,
-            IPermissionService permissionService, ILanguageService languageService,
-            ISettingService settingService,
-            PaymentSettings paymentSettings,ShippingSettings shippingSettings,
-            TaxSettings taxSettings, ExternalAuthenticationSettings externalAuthenticationSettings, 
+            ILocalizationService localizationService,
+            IWebHelper webHelper,
+            IPermissionService permissionService, 
+            ILanguageService languageService,
+            ISettingService settingService, 
+            IStoreService storeService,
+            PaymentSettings paymentSettings,
+            ShippingSettings shippingSettings,
+            TaxSettings taxSettings, 
+            ExternalAuthenticationSettings externalAuthenticationSettings, 
             WidgetSettings widgetSettings)
 		{
             this._pluginFinder = pluginFinder;
@@ -59,6 +63,7 @@ namespace Nop.Admin.Controllers
             this._permissionService = permissionService;
             this._languageService = languageService;
             this._settingService = settingService;
+            this._storeService = storeService;
             this._paymentSettings = paymentSettings;
             this._shippingSettings = shippingSettings;
             this._taxSettings = taxSettings;
@@ -71,15 +76,34 @@ namespace Nop.Admin.Controllers
         #region Utilities
 
         [NonAction]
-        protected PluginModel PreparePluginModel(PluginDescriptor pluginDescriptor)
+        protected PluginModel PreparePluginModel(PluginDescriptor pluginDescriptor, 
+            bool prepareLocales = true, bool prepareStores = true)
         {
             var pluginModel = pluginDescriptor.ToModel();
+            //logo
+            pluginModel.LogoUrl = pluginDescriptor.GetLogoUrl(_webHelper);
 
-            //locales
-            AddLocales(_languageService, pluginModel.Locales, (locale, languageId) =>
+            if (prepareLocales)
             {
-                locale.FriendlyName = pluginDescriptor.Instance().GetLocalizedFriendlyName(_localizationService, languageId, false);
-            });
+                //locales
+                AddLocales(_languageService, pluginModel.Locales, (locale, languageId) =>
+                {
+                    locale.FriendlyName = pluginDescriptor.Instance().GetLocalizedFriendlyName(_localizationService, languageId, false);
+                });
+            }
+            if (prepareStores)
+            {
+                //stores
+                pluginModel.AvailableStores = _storeService
+                    .GetAllStores()
+                    .Select(s => s.ToModel())
+                    .ToList();
+                pluginModel.SelectedStoreIds = pluginDescriptor.LimitedToStores.ToArray();
+                pluginModel.LimitedToStores = pluginDescriptor.LimitedToStores.Count > 0;
+            }
+
+
+            //configuration URLs
 
             if (pluginDescriptor.Installed)
             {
@@ -161,20 +185,6 @@ namespace Nop.Admin.Controllers
             return pluginModel;
         }
 
-        [NonAction]
-        protected GridModel<PluginModel> PreparePluginListModel()
-        {
-            var pluginDescriptors = _pluginFinder.GetPluginDescriptors(false);
-            var model = new GridModel<PluginModel>
-            {
-                Data = pluginDescriptors.Select(x => PreparePluginModel(x))
-                .OrderBy(x => x.Group)
-                .ThenBy(x => x.DisplayOrder).ToList(),
-                Total = pluginDescriptors.Count()
-            };
-            return model;
-        }
-
         #endregion
 
         #region Methods
@@ -192,19 +202,24 @@ namespace Nop.Admin.Controllers
             return View();
         }
 
-        public ActionResult ListSelect(GridCommand command)
-        {
-            if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
-                return AccessDeniedView();
+	    [HttpPost]
+	    public ActionResult ListSelect(DataSourceRequest command)
+	    {
+	        if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
+	            return AccessDeniedView();
 
-            var model = PreparePluginListModel();
-            return new JsonResult
+	        var pluginDescriptors = _pluginFinder.GetPluginDescriptors(false).ToList();
+	        var gridModel = new DataSourceResult
             {
-                Data = model
+                Data = pluginDescriptors.Select(x => PreparePluginModel(x, false, false))
+                .OrderBy(x => x.Group)
+                .ToList(),
+                Total = pluginDescriptors.Count()
             };
-        }
-        
-        public ActionResult Install(string systemName)
+	        return Json(gridModel);
+	    }
+
+	    public ActionResult Install(string systemName)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManagePlugins))
                 return AccessDeniedView();
@@ -328,9 +343,14 @@ namespace Nop.Admin.Controllers
 
             if (ModelState.IsValid)
             {
-                //we allow editing of 'friendly name' and 'display order'
+                //we allow editing of 'friendly name', 'display order', store mappings
                 pluginDescriptor.FriendlyName = model.FriendlyName;
                 pluginDescriptor.DisplayOrder = model.DisplayOrder;
+                pluginDescriptor.LimitedToStores.Clear();
+                if (model.LimitedToStores && model.SelectedStoreIds != null)
+                {
+                    pluginDescriptor.LimitedToStores = model.SelectedStoreIds.ToList();
+                }
                 PluginFileParser.SavePluginDescriptionFile(pluginDescriptor);
                 //reset plugin cache
                 _pluginFinder.ReloadPlugins();

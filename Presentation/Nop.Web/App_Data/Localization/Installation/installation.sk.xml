@@ -139,7 +139,4 @@
 	<LocaleResource Name="WindowsAuthentication">
 		<Value>Integrované overovanie Windows</Value>
 	</LocaleResource>
-	<LocaleResource Name="NuoDB">
-		<Value>NuoDB</Value>
-	</LocaleResource>
 </Language>

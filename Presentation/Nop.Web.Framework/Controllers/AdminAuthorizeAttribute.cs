@@ -10,6 +10,19 @@ namespace Nop.Web.Framework.Controllers
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, Inherited=true, AllowMultiple=true)]
     public class AdminAuthorizeAttribute : FilterAttribute, IAuthorizationFilter
     {
+        private readonly bool _dontValidate = false;
+
+
+        public AdminAuthorizeAttribute()
+            : this(false)
+        {
+        }
+
+        public AdminAuthorizeAttribute(bool dontValidate)
+        {
+            this._dontValidate = dontValidate;
+        }
+
         private void HandleUnauthorizedRequest(AuthorizationContext filterContext)
         {
             filterContext.Result = new HttpUnauthorizedResult();
@@ -32,6 +45,9 @@ namespace Nop.Web.Framework.Controllers
 
         public void OnAuthorization(AuthorizationContext filterContext)
         {
+            if (_dontValidate)
+                return;
+
             if (filterContext == null)
                 throw new ArgumentNullException("filterContext");
 

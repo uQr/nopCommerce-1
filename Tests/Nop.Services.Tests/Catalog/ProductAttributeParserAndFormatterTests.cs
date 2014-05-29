@@ -6,6 +6,7 @@ using Nop.Core.Data;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Localization;
+using Nop.Core.Domain.Orders;
 using Nop.Services.Catalog;
 using Nop.Services.Directory;
 using Nop.Services.Events;
@@ -21,26 +22,28 @@ namespace Nop.Services.Tests.Catalog
     [TestFixture]
     public class ProductAttributeParserTests : ServiceTest
     {
-        IRepository<ProductAttribute> _productAttributeRepo;
-        IRepository<ProductVariantAttribute> _productVariantAttributeRepo;
-        IRepository<ProductVariantAttributeCombination> _productVariantAttributeCombinationRepo;
-        IRepository<ProductVariantAttributeValue> _productVariantAttributeValueRepo;
-        IProductAttributeService _productAttributeService;
-        IProductAttributeParser _productAttributeParser;
-        IEventPublisher _eventPublisher;
+        private IRepository<ProductAttribute> _productAttributeRepo;
+        private IRepository<ProductVariantAttribute> _productVariantAttributeRepo;
+        private IRepository<ProductVariantAttributeCombination> _productVariantAttributeCombinationRepo;
+        private IRepository<ProductVariantAttributeValue> _productVariantAttributeValueRepo;
+        private IProductAttributeService _productAttributeService;
+        private IProductAttributeParser _productAttributeParser;
+        private IEventPublisher _eventPublisher;
 
-        IWorkContext _workContext;
-        ICurrencyService _currencyService;
-        ILocalizationService _localizationService;
-        ITaxService _taxService;
-        IPriceFormatter _priceFormatter;
-        IDownloadService _downloadService;
-        IWebHelper _webHelper;
-        IProductAttributeFormatter _productAttributeFormatter;
+        private IWorkContext _workContext;
+        private ICurrencyService _currencyService;
+        private ILocalizationService _localizationService;
+        private ITaxService _taxService;
+        private IPriceFormatter _priceFormatter;
+        private IPriceCalculationService _priceCalculationService;
+        private IDownloadService _downloadService;
+        private IWebHelper _webHelper;
+        private ShoppingCartSettings _shoppingCartSettings;
+        private IProductAttributeFormatter _productAttributeFormatter;
 
-        ProductAttribute pa1, pa2, pa3;
-        ProductVariantAttribute pva1_1, pva2_1, pva3_1;
-        ProductVariantAttributeValue pvav1_1, pvav1_2, pvav2_1, pvav2_2;
+        private ProductAttribute pa1, pa2, pa3;
+        private ProductVariantAttribute pva1_1, pva2_1, pva3_1;
+        private ProductVariantAttributeValue pvav1_1, pvav1_2, pvav2_1, pvav2_2;
         
         [SetUp]
         public new void SetUp()
@@ -56,7 +59,7 @@ namespace Nop.Services.Tests.Catalog
             pva1_1 = new ProductVariantAttribute
             {
                 Id = 11,
-                ProductVariantId = 1,
+                ProductId = 1,
                 TextPrompt = "Select color:",
                 IsRequired = true,
                 AttributeControlType = AttributeControlType.DropdownList,
@@ -92,7 +95,7 @@ namespace Nop.Services.Tests.Catalog
             pva2_1 = new ProductVariantAttribute
             {
                 Id = 21,
-                ProductVariantId = 1,
+                ProductId = 1,
                 TextPrompt = "Select at least one option:",
                 IsRequired = true,
                 AttributeControlType = AttributeControlType.Checkboxes,
@@ -128,7 +131,7 @@ namespace Nop.Services.Tests.Catalog
             pva3_1 = new ProductVariantAttribute
             {
                 Id = 31,
-                ProductVariantId = 1,
+                ProductId = 1,
                 TextPrompt = "Enter custom text:",
                 IsRequired = true,
                 AttributeControlType = AttributeControlType.TextBox,
@@ -176,7 +179,7 @@ namespace Nop.Services.Tests.Catalog
 
             _productAttributeParser = new ProductAttributeParser(_productAttributeService);
 
-
+            _priceCalculationService = MockRepository.GenerateMock<IPriceCalculationService>();
 
 
             var workingLanguage = new Language();
@@ -192,6 +195,7 @@ namespace Nop.Services.Tests.Catalog
             _priceFormatter = MockRepository.GenerateMock<IPriceFormatter>();
             _downloadService = MockRepository.GenerateMock<IDownloadService>();
             _webHelper = MockRepository.GenerateMock<IWebHelper>();
+            _shoppingCartSettings = MockRepository.GenerateMock<ShoppingCartSettings>();
 
             _productAttributeFormatter = new ProductAttributeFormatter(_workContext,
                 _productAttributeService,
@@ -201,7 +205,9 @@ namespace Nop.Services.Tests.Catalog
                 _taxService,
                 _priceFormatter,
                 _downloadService,
-                _webHelper);
+                _webHelper,
+                _priceCalculationService,
+                _shoppingCartSettings);
         }
         
         [Test]
@@ -258,13 +264,13 @@ namespace Nop.Services.Tests.Catalog
                 "recipientName 1", "recipientEmail@gmail.com",
                 "senderName 1", "senderEmail@gmail.com", "custom message");
 
-            var productVariant = new ProductVariant()
+            var product = new Product()
             {
                 IsGiftCard = true,
                 GiftCardType = GiftCardType.Virtual,
             };
             var customer = new Customer();
-            string formattedAttributes = _productAttributeFormatter.FormatAttributes(productVariant,
+            string formattedAttributes = _productAttributeFormatter.FormatAttributes(product,
                 attributes, customer, "<br />", false, false, true, true);
             formattedAttributes.ShouldEqual("From: senderName 1 <senderEmail@gmail.com><br />For: recipientName 1 <recipientEmail@gmail.com>");
         }
@@ -276,13 +282,13 @@ namespace Nop.Services.Tests.Catalog
                 "recipientName 1", "recipientEmail@gmail.com",
                 "senderName 1", "senderEmail@gmail.com", "custom message");
 
-            var productVariant = new ProductVariant()
+            var product = new Product()
             {
                 IsGiftCard = true,
                 GiftCardType = GiftCardType.Physical,
             };
             var customer = new Customer();
-            string formattedAttributes = _productAttributeFormatter.FormatAttributes(productVariant,
+            string formattedAttributes = _productAttributeFormatter.FormatAttributes(product,
                 attributes, customer, "<br />", false, false, true, true);
             formattedAttributes.ShouldEqual("From: senderName 1<br />For: recipientName 1");
         }
@@ -304,13 +310,13 @@ namespace Nop.Services.Tests.Catalog
                 "recipientName 1", "recipientEmail@gmail.com",
                 "senderName 1", "senderEmail@gmail.com", "custom message");
 
-            var productVariant = new ProductVariant()
+            var product = new Product()
             {
                 IsGiftCard = true,
                 GiftCardType = GiftCardType.Virtual,
             };
             var customer = new Customer();
-            string formattedAttributes = _productAttributeFormatter.FormatAttributes(productVariant,
+            string formattedAttributes = _productAttributeFormatter.FormatAttributes(product,
                 attributes, customer, "<br />", false, false, true, true);
             formattedAttributes.ShouldEqual("Color: Green<br />Some custom option: Option 1<br />Some custom option: Option 2<br />Color: Some custom text goes here<br />From: senderName 1 <senderEmail@gmail.com><br />For: recipientName 1 <recipientEmail@gmail.com>");
         }

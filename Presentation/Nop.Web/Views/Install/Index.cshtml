@@ -21,8 +21,7 @@
     {
         <link href="@Url.Content("~/Content/Install/style.css")" type="text/css" rel="stylesheet" />
     }
-    <script src="@Url.Content("~/Scripts/jquery-1.7.1.min.js")" type="text/javascript"></script>
-    <script src="@Url.Content("~/Scripts/jquery.unobtrusive-ajax.min.js")" type="text/javascript"></script>
+    <script src="@Url.Content("~/Scripts/jquery-1.10.2.min.js")" type="text/javascript"></script>
     <script src="@Url.Content("~/Scripts/jquery.validate.min.js")" type="text/javascript"></script>
     <script src="@Url.Content("~/Scripts/jquery.validate.unobtrusive.min.js")" type="text/javascript"></script>
     <script src="@Url.Content("~/Scripts/public.common.js")" type="text/javascript"></script>
@@ -60,16 +59,16 @@
             function toggleProvider() {
                 var selectedProvider = $("input[name=DataProvider]:checked").attr('id');
                 if (selectedProvider == 'provider_sqlce') {
-                	$('#sqlConnectionInfo').hide();
-                	$('#nuodbConnectionInfo').hide();
+                    $('#sqlConnectionInfo').hide();
+                    $('#nuodbConnectionInfo').hide();
                 }
                 else if (selectedProvider == 'provider_sqlserver') {
-                	$('#sqlConnectionInfo').show();
-                	$('#nuodbConnectionInfo').hide();
+                    $('#sqlConnectionInfo').show();
+                    $('#nuodbConnectionInfo').hide();
                 }
                 else if (selectedProvider == 'provider_nuodb') {
-                	$('#sqlConnectionInfo').hide();
-                	$('#nuodbConnectionInfo').show();
+                    $('#sqlConnectionInfo').hide();
+                    $('#nuodbConnectionInfo').show();
                 }
             }
 
@@ -96,6 +95,7 @@
                     $('#pnlSqlServerPassword').hide();
                 }
             }
+
 
             function toggleCollation() {
                 if ($('#UseCustomCollation').is(':checked')) {
@@ -198,34 +198,37 @@
                                                     <hr />
                                                 </td>
                                             </tr>
-                                            <tr>
-                                                <td colspan="2" align="left">
-                                                    @Html.RadioButton("DataProvider", "nuodb", (Model.DataProvider == "nuodb"), new { id = "provider_nuodb" })
-                                                    <label for="provider_nuodb">
-                                                        @ILS.GetResource("NuoDB")</label>
+											<tr>
+												<td colspan="2" align="left">
+													@Html.RadioButton("DataProvider", "nuodb", (Model.DataProvider == "nuodb"), new { id = "provider_nuodb" })
+													<label for="provider_nuodb">
+														@ILS.GetResource("NuoDB")
+													</label>
 													<div id="nuodbConnectionInfo">
-                                                        <br />
-                                                        <hr />
-                                                        <br />
-                                                        @Html.RadioButton("NuoDbConnectionInfo", "nuodbconnectioninfo_raw", true, new { id = "nuodbconnectioninfo_raw" })
-                                                        <label for="nuodbconnectioninfo_raw">
-                                                            @ILS.GetResource("RawConnectionString")</label>
-                                                        <div id="nuoDbDatabaseConnectionString">
-                                                            <span style="white-space: nowrap;">
-                                                                <label for="DatabaseConnectionString">
-                                                                    @ILS.GetResource("ConnectionString"):</label>
-                                                                @Html.TextBoxFor(x => x.DatabaseConnectionString, new { @class = "textbox", style = "width:90%;" })
-                                                            </span>
-                                                            <br />
-                                                            <span class="hint">@ILS.GetResource("Example"):<br />
-                                                                Database=database;Password=pwd;Schema=schema;Server=server;User=user
-                                                                <br />
-                                                                Find more info <a href="http://www.connectionstrings.com/" target="_blank">here</a>
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
+														<br />
+														<hr />
+														<br />
+														@Html.RadioButton("NuoDbConnectionInfo", "nuodbconnectioninfo_raw", true, new { id = "nuodbconnectioninfo_raw" })
+														<label for="nuodbconnectioninfo_raw">
+															@ILS.GetResource("RawConnectionString")
+														</label>
+														<div id="nuoDbDatabaseConnectionString">
+															<span style="white-space: nowrap;">
+																<label for="DatabaseConnectionString">
+																	@ILS.GetResource("ConnectionString"):</label>
+																@Html.TextBoxFor(x => x.DatabaseConnectionString, new { @class = "textbox", style = "width:90%;" })
+															</span>
+															<br />
+															<span class="hint">
+																@ILS.GetResource("Example"):<br />
+																Server=server;Database=database;Schema=schema;Password=pwd;User=user
+															<br />
+															Find more info <a href="http://www.connectionstrings.com/" target="_blank">here</a>
+														</span>
+														</div>
+													</div>
+												</td>
+											</tr>
                                             @if (!Model.DisableSqlCompact)
                                             {
                                             <tr>

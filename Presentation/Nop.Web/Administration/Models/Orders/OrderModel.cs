@@ -2,13 +2,11 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Web.Mvc;
-using Nop.Admin.Models.Catalog;
 using Nop.Admin.Models.Common;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Tax;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Mvc;
-using Telerik.Web.Mvc;
 
 namespace Nop.Admin.Models.Orders
 {
@@ -18,7 +16,7 @@ namespace Nop.Admin.Models.Orders
         {
             TaxRates = new List<TaxRate>();
             GiftCards = new List<GiftCard>();
-            Items = new List<OrderProductVariantModel>();
+            Items = new List<OrderItemModel>();
             UsedDiscounts = new List<UsedDiscountModel>();
         }
 
@@ -41,6 +39,7 @@ namespace Nop.Admin.Models.Orders
         public string CustomerInfo { get; set; }
         [NopResourceDisplayName("Admin.Orders.Fields.CustomerEmail")]
         public string CustomerEmail { get; set; }
+        public string CustomerFullName { get; set; }
         [NopResourceDisplayName("Admin.Orders.Fields.CustomerIP")]
         public string CustomerIp { get; set; }
 
@@ -119,6 +118,8 @@ namespace Nop.Admin.Models.Orders
         //order status
         [NopResourceDisplayName("Admin.Orders.Fields.OrderStatus")]
         public string OrderStatus { get; set; }
+        [NopResourceDisplayName("Admin.Orders.Fields.OrderStatus")]
+        public int OrderStatusId { get; set; }
 
         //payment info
         [NopResourceDisplayName("Admin.Orders.Fields.PaymentStatus")]
@@ -180,7 +181,7 @@ namespace Nop.Admin.Models.Orders
 
         //items
         public bool HasDownloadableProducts { get; set; }
-        public IList<OrderProductVariantModel> Items { get; set; }
+        public IList<OrderItemModel> Items { get; set; }
 
         //creation date
         [NopResourceDisplayName("Admin.Orders.Fields.CreatedOn")]
@@ -191,14 +192,14 @@ namespace Nop.Admin.Models.Orders
 
 
         //order notes
-        [NopResourceDisplayName("Admin.Orders.OrderNotes.Fields.AddOrderNoteDisplayToCustomer")]
+        [NopResourceDisplayName("Admin.Orders.OrderNotes.Fields.DisplayToCustomer")]
         public bool AddOrderNoteDisplayToCustomer { get; set; }
-        [NopResourceDisplayName("Admin.Orders.OrderNotes.Fields.AddOrderNoteMessage")]
+        [NopResourceDisplayName("Admin.Orders.OrderNotes.Fields.Note")]
         [AllowHtml]
         public string AddOrderNoteMessage { get; set; }
-
-        public bool DisplayPdfInvoice { get; set; }
-
+        [NopResourceDisplayName("Admin.Orders.OrderNotes.Fields.Download")]
+        [UIHint("Download")]
+        public int AddOrderNoteDownloadId { get; set; }
 
         //refund info
         [NopResourceDisplayName("Admin.Orders.Fields.PartialRefund.AmountToRefund")]
@@ -216,24 +217,18 @@ namespace Nop.Admin.Models.Orders
         public bool CanPartiallyRefundOffline { get; set; }
         public bool CanVoid { get; set; }
         public bool CanVoidOffline { get; set; }
-        
-        //aggergator proeprties
-        public string aggregatorprofit { get; set; }
-        public string aggregatortax { get; set; }
-        public string aggregatortotal { get; set; }
 
         #region Nested Classes
 
-        public partial class OrderProductVariantModel : BaseNopEntityModel
+        public partial class OrderItemModel : BaseNopEntityModel
         {
-            public OrderProductVariantModel()
+            public OrderItemModel()
             {
                 ReturnRequestIds = new List<int>();
                 PurchasedGiftCardIds = new List<int>();
             }
-            public int ProductVariantId { get; set; }
-
-            public string FullProductName { get; set; }
+            public int ProductId { get; set; }
+            public string ProductName { get; set; }
             public string VendorName { get; set; }
             public string Sku { get; set; }
 
@@ -263,7 +258,7 @@ namespace Nop.Admin.Models.Orders
             public int DownloadCount { get; set; }
             public DownloadActivationType DownloadActivationType { get; set; }
             public bool IsDownloadActivated { get; set; }
-            public int? LicenseDownloadId { get; set; }
+            public Guid LicenseDownloadGuid { get; set; }
         }
 
         public partial class TaxRate : BaseNopModel
@@ -286,6 +281,10 @@ namespace Nop.Admin.Models.Orders
             public bool DisplayToCustomer { get; set; }
             [NopResourceDisplayName("Admin.Orders.OrderNotes.Fields.Note")]
             public string Note { get; set; }
+            [NopResourceDisplayName("Admin.Orders.OrderNotes.Fields.Download")]
+            public int DownloadId { get; set; }
+            [NopResourceDisplayName("Admin.Orders.OrderNotes.Fields.Download")]
+            public Guid DownloadGuid { get; set; }
             [NopResourceDisplayName("Admin.Orders.OrderNotes.Fields.CreatedOn")]
             public DateTime CreatedOn { get; set; }
         }
@@ -294,7 +293,7 @@ namespace Nop.Admin.Models.Orders
         {
             public int OrderId { get; set; }
 
-            public int OrderProductVariantId { get; set; }
+            public int OrderItemId { get; set; }
 
             [UIHint("Download")]
             public int LicenseDownloadId { get; set; }
@@ -307,8 +306,8 @@ namespace Nop.Admin.Models.Orders
             {
                 AvailableCategories = new List<SelectListItem>();
                 AvailableManufacturers = new List<SelectListItem>();
+                AvailableProductTypes = new List<SelectListItem>();
             }
-            public GridModel<ProductVariantModel> ProductVariants { get; set; }
 
             [NopResourceDisplayName("Admin.Catalog.Products.List.SearchProductName")]
             [AllowHtml]
@@ -317,15 +316,18 @@ namespace Nop.Admin.Models.Orders
             public int SearchCategoryId { get; set; }
             [NopResourceDisplayName("Admin.Catalog.Products.List.SearchManufacturer")]
             public int SearchManufacturerId { get; set; }
+            [NopResourceDisplayName("Admin.Catalog.Products.List.SearchProductType")]
+            public int SearchProductTypeId { get; set; }
 
             public IList<SelectListItem> AvailableCategories { get; set; }
             public IList<SelectListItem> AvailableManufacturers { get; set; }
+            public IList<SelectListItem> AvailableProductTypes { get; set; }
 
             public int OrderId { get; set; }
 
             #region Nested classes
             
-            public partial class ProductVariantLineModel : BaseNopEntityModel
+            public partial class ProductModel : BaseNopEntityModel
             {
                 [NopResourceDisplayName("Admin.Orders.Products.AddNew.Name")]
                 [AllowHtml]
@@ -345,9 +347,11 @@ namespace Nop.Admin.Models.Orders
                     Warnings = new List<string>();
                 }
 
-                public int ProductVariantId { get; set; }
+                public int ProductId { get; set; }
 
                 public int OrderId { get; set; }
+
+                public ProductType ProductType { get; set; }
 
                 public string Name { get; set; }
 
@@ -433,5 +437,15 @@ namespace Nop.Admin.Models.Orders
         }
 
         #endregion
+    }
+
+
+    public partial class OrderAggreratorModel : BaseNopModel
+    {
+        //aggergator properties
+        public string aggregatorprofit { get; set; }
+        public string aggregatorshipping { get; set; }
+        public string aggregatortax { get; set; }
+        public string aggregatortotal { get; set; }
     }
 }

@@ -15,18 +15,26 @@ namespace Nop.Services.Shipping
         /// </summary>
         /// <param name="shipment">Shipment</param>
         void DeleteShipment(Shipment shipment);
-
+        
         /// <summary>
         /// Search shipments
         /// </summary>
         /// <param name="vendorId">Vendor identifier; 0 to load all records</param>
+        /// <param name="trackingNumber">Search by tracking number</param>
+        /// <param name="shippingCountryId">Shipping country identifier; 0 to load all records</param>
+        /// <param name="shippingStateId">Shipping state identifier; 0 to load all records</param>
+        /// <param name="shippingCity">Shipping city; null to load all records</param>
         /// <param name="createdFromUtc">Created date from (UTC); null to load all records</param>
         /// <param name="createdToUtc">Created date to (UTC); null to load all records</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <returns>Customer collection</returns>
-        IPagedList<Shipment> GetAllShipments(int vendorId, 
-            DateTime? createdFromUtc, DateTime? createdToUtc, 
+        IPagedList<Shipment> GetAllShipments(int vendorId,
+            int shippingCountryId,
+            int shippingStateId,
+            string shippingCity,
+            string trackingNumber,
+            DateTime? createdFromUtc, DateTime? createdToUtc,
             int pageIndex, int pageSize);
         
         /// <summary>
@@ -58,28 +66,28 @@ namespace Nop.Services.Shipping
 
 
         /// <summary>
-        /// Deletes a shipment order product variant
+        /// Deletes a shipment item
         /// </summary>
-        /// <param name="sopv">Shipment order product variant</param>
-        void DeleteShipmentOrderProductVariant(ShipmentOrderProductVariant sopv);
+        /// <param name="shipmentItem">Shipment item</param>
+        void DeleteShipmentItem(ShipmentItem shipmentItem);
 
         /// <summary>
-        /// Gets a shipment order product variant
+        /// Gets a shipment item
         /// </summary>
-        /// <param name="sopvId">Shipment order product variant identifier</param>
-        /// <returns>Shipment order product variant</returns>
-        ShipmentOrderProductVariant GetShipmentOrderProductVariantById(int sopvId);
+        /// <param name="shipmentItemId">Shipment item identifier</param>
+        /// <returns>Shipment item</returns>
+        ShipmentItem GetShipmentItemById(int shipmentItemId);
 
         /// <summary>
-        /// Inserts a shipment order product variant
+        /// Inserts a shipment item
         /// </summary>
-        /// <param name="sopv">Shipment order product variant</param>
-        void InsertShipmentOrderProductVariant(ShipmentOrderProductVariant sopv);
+        /// <param name="shipmentItem">Shipment item</param>
+        void InsertShipmentItem(ShipmentItem shipmentItem);
 
         /// <summary>
-        /// Updates the shipment order product variant
+        /// Updates the shipment item
         /// </summary>
-        /// <param name="sopv">Shipment order product variant</param>
-        void UpdateShipmentOrderProductVariant(ShipmentOrderProductVariant sopv);
+        /// <param name="shipmentItem">Shipment item</param>
+        void UpdateShipmentItem(ShipmentItem shipmentItem);
     }
 }

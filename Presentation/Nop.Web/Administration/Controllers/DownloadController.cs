@@ -4,12 +4,10 @@ using System.Web;
 using System.Web.Mvc;
 using Nop.Core.Domain.Media;
 using Nop.Services.Media;
-using Nop.Web.Framework.Controllers;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class DownloadController : BaseNopController
+    public partial class DownloadController : BaseAdminController
     {
         private readonly IDownloadService _downloadService;
 
@@ -18,9 +16,9 @@ namespace Nop.Admin.Controllers
             this._downloadService = downloadService;
         }
 
-        public ActionResult DownloadFile(int downloadId)
+        public ActionResult DownloadFile(Guid downloadGuid)
         {
-            var download = _downloadService.GetDownloadById(downloadId);
+            var download = _downloadService.GetDownloadByGuid(downloadGuid);
             if (download == null)
                 return Content("No download record found with the specified id");
 
@@ -32,9 +30,9 @@ namespace Nop.Admin.Controllers
             {
                 //use stored data
                 if (download.DownloadBinary == null)
-                    return Content(string.Format("Download data is not available any more. Download ID={0}", downloadId));
+                    return Content(string.Format("Download data is not available any more. Download GD={0}", download.Id));
 
-                string fileName = !String.IsNullOrWhiteSpace(download.Filename) ? download.Filename : downloadId.ToString();
+                string fileName = !String.IsNullOrWhiteSpace(download.Filename) ? download.Filename : download.Id.ToString();
                 string contentType = !String.IsNullOrWhiteSpace(download.ContentType) ? download.ContentType : "application/octet-stream";
                 return new FileContentResult(download.DownloadBinary, contentType) { FileDownloadName = fileName + download.Extension };
             }
@@ -108,7 +106,7 @@ namespace Nop.Admin.Controllers
             //otherwise some browsers will pop-up a "Save As" dialog.
             return Json(new { success = true, 
                 downloadId = download.Id, 
-                downloadUrl = Url.Action("DownloadFile", new { downloadId = download.Id }) },
+                downloadUrl = Url.Action("DownloadFile", new { downloadGuid= download.DownloadGuid }) },
                 "text/plain");
         }
     }

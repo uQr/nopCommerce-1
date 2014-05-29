@@ -20,13 +20,13 @@ namespace Nop.Services.Tests.Discounts
     [TestFixture]
     public class DiscountServiceTests : ServiceTest
     {
-        IRepository<Discount> _discountRepo;
-        IRepository<DiscountRequirement> _discountRequirementRepo;
-        IRepository<DiscountUsageHistory> _discountUsageHistoryRepo;
-        IEventPublisher _eventPublisher;
-        IGenericAttributeService _genericAttributeService;
-        IDiscountService _discountService;
-        IStoreContext _storeContext;
+        private IRepository<Discount> _discountRepo;
+        private IRepository<DiscountRequirement> _discountRequirementRepo;
+        private IRepository<DiscountUsageHistory> _discountUsageHistoryRepo;
+        private IEventPublisher _eventPublisher;
+        private IGenericAttributeService _genericAttributeService;
+        private IDiscountService _discountService;
+        private IStoreContext _storeContext;
         
         [SetUp]
         public new void SetUp()

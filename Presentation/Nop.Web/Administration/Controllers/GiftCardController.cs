@@ -16,12 +16,11 @@ using Nop.Services.Orders;
 using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class GiftCardController : BaseNopController
+    public partial class GiftCardController : BaseAdminController
     {
         #region Fields
 
@@ -96,8 +95,8 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult GiftCardList(GridCommand command, GiftCardListModel model)
+        [HttpPost]
+        public ActionResult GiftCardList(DataSourceRequest command, GiftCardListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageGiftCards))
                 return AccessDeniedView();
@@ -109,7 +108,7 @@ namespace Nop.Admin.Controllers
                 isGiftCardActivated = false;
             var giftCards = _giftCardService.GetAllGiftCards(null, null, null,
                 isGiftCardActivated, model.CouponCode, command.Page - 1, command.PageSize);
-            var gridModel = new GridModel<GiftCardModel>
+            var gridModel = new DataSourceResult
             {
                 Data = giftCards.Select(x =>
                 {
@@ -121,10 +120,8 @@ namespace Nop.Admin.Controllers
                 }),
                 Total = giftCards.TotalCount
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
 
         public ActionResult Create()
@@ -138,7 +135,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(GiftCardModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageGiftCards))
@@ -173,7 +170,7 @@ namespace Nop.Admin.Controllers
                 return RedirectToAction("List");
 
             var model = giftCard.ToModel();
-            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderProductVariant != null ? (int?)giftCard.PurchasedWithOrderProductVariant.OrderId : null;
+            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderItem != null ? (int?)giftCard.PurchasedWithOrderItem.OrderId : null;
             model.RemainingAmountStr = _priceFormatter.FormatPrice(giftCard.GetGiftCardRemainingAmount(), true, false);
             model.AmountStr = _priceFormatter.FormatPrice(giftCard.Amount, true, false);
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(giftCard.CreatedOnUtc, DateTimeKind.Utc);
@@ -182,7 +179,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         [FormValueRequired("save", "save-continue")]
         public ActionResult Edit(GiftCardModel model, bool continueEditing)
         {
@@ -191,7 +188,7 @@ namespace Nop.Admin.Controllers
 
             var giftCard = _giftCardService.GetGiftCardById(model.Id);
 
-            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderProductVariant != null ? (int?)giftCard.PurchasedWithOrderProductVariant.OrderId : null;
+            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderItem != null ? (int?)giftCard.PurchasedWithOrderItem.OrderId : null;
             model.RemainingAmountStr = _priceFormatter.FormatPrice(giftCard.GetGiftCardRemainingAmount(), true, false);
             model.AmountStr = _priceFormatter.FormatPrice(giftCard.Amount, true, false);
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(giftCard.CreatedOnUtc, DateTimeKind.Utc);
@@ -206,7 +203,18 @@ namespace Nop.Admin.Controllers
                 _customerActivityService.InsertActivity("EditGiftCard", _localizationService.GetResource("ActivityLog.EditGiftCard"), giftCard.GiftCardCouponCode);
 
                 SuccessNotification(_localizationService.GetResource("Admin.GiftCards.Updated"));
-                return continueEditing ? RedirectToAction("Edit", giftCard.Id) : RedirectToAction("List");
+
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", giftCard.Id);
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
             //If we got this far, something failed, redisplay form
@@ -229,7 +237,7 @@ namespace Nop.Admin.Controllers
             var giftCard = _giftCardService.GetGiftCardById(model.Id);
 
             model = giftCard.ToModel();
-            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderProductVariant != null ? (int?)giftCard.PurchasedWithOrderProductVariant.OrderId : null;
+            model.PurchasedWithOrderId = giftCard.PurchasedWithOrderItem != null ? (int?)giftCard.PurchasedWithOrderItem.OrderId : null;
             model.RemainingAmountStr = _priceFormatter.FormatPrice(giftCard.GetGiftCardRemainingAmount(), true, false);
             model.AmountStr = _priceFormatter.FormatPrice(giftCard.Amount, true, false);
             model.CreatedOn = _dateTimeHelper.ConvertToUserTime(giftCard.CreatedOnUtc, DateTimeKind.Utc);
@@ -243,7 +251,7 @@ namespace Nop.Admin.Controllers
                     throw new NopException("Sender email is not valid");
 
                 var languageId = 0;
-                var order = giftCard.PurchasedWithOrderProductVariant != null ? giftCard.PurchasedWithOrderProductVariant.Order : null;
+                var order = giftCard.PurchasedWithOrderItem != null ? giftCard.PurchasedWithOrderItem.Order : null;
                 if (order != null)
                 {
                     var customerLang = _languageService.GetLanguageById(order.CustomerLanguageId);
@@ -293,8 +301,8 @@ namespace Nop.Admin.Controllers
         }
         
         //Gif card usage history
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult UsageHistoryList(int giftCardId, GridCommand command)
+        [HttpPost]
+        public ActionResult UsageHistoryList(int giftCardId, DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageGiftCards))
                 return AccessDeniedView();
@@ -315,16 +323,13 @@ namespace Nop.Admin.Controllers
                     };
                 })
                 .ToList();
-            var model = new GridModel<GiftCardModel.GiftCardUsageHistoryModel>
+            var gridModel = new DataSourceResult
             {
                 Data = usageHistoryModel.PagedForCommand(command),
                 Total = usageHistoryModel.Count
             };
 
-            return new JsonResult
-            {
-                Data = model
-            };
+            return Json(gridModel);
         }
 
         #endregion

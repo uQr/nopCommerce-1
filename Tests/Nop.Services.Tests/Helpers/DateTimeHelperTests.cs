@@ -6,7 +6,6 @@ using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Stores;
 using Nop.Services.Common;
 using Nop.Services.Configuration;
-using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Tests;
 using NUnit.Framework;
@@ -17,13 +16,13 @@ namespace Nop.Services.Tests.Helpers
     [TestFixture]
     public class DateTimeHelperTests : ServiceTest
     {
-        IWorkContext _workContext;
-        IStoreContext _storeContext;
-        IGenericAttributeService _genericAttributeService;
-        ISettingService _settingService;
-        DateTimeSettings _dateTimeSettings;
-        IDateTimeHelper _dateTimeHelper;
-        Store _store;
+        private IWorkContext _workContext;
+        private IStoreContext _storeContext;
+        private IGenericAttributeService _genericAttributeService;
+        private ISettingService _settingService;
+        private DateTimeSettings _dateTimeSettings;
+        private IDateTimeHelper _dateTimeHelper;
+        private Store _store;
 
         [SetUp]
         public new void SetUp()

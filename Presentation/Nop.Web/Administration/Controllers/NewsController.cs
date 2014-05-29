@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.News;
-using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.News;
-using Nop.Services.Customers;
 using Nop.Services.Helpers;
 using Nop.Services.Localization;
 using Nop.Services.News;
@@ -15,12 +13,12 @@ using Nop.Services.Seo;
 using Nop.Services.Stores;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-    public partial class NewsController : BaseNopController
+    public partial class NewsController : BaseAdminController
 	{
 		#region Fields
 
@@ -130,14 +128,14 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command, NewsItemListModel model)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command, NewsItemListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
                 return AccessDeniedView();
 
             var news = _newsService.GetAllNews(0, model.SearchStoreId, command.Page - 1, command.PageSize, true);
-            var gridModel = new GridModel<NewsItemModel>
+            var gridModel = new DataSourceResult
             {
                 Data = news.Select(x =>
                 {
@@ -153,10 +151,8 @@ namespace Nop.Admin.Controllers
                 }),
                 Total = news.TotalCount
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
 
         public ActionResult Create()
@@ -174,7 +170,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(NewsItemModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
@@ -225,7 +221,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Edit(NewsItemModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
@@ -251,7 +247,18 @@ namespace Nop.Admin.Controllers
                 SaveStoreMappings(newsItem, model);
 
                 SuccessNotification(_localizationService.GetResource("Admin.ContentManagement.News.NewsItems.Updated"));
-                return continueEditing ? RedirectToAction("Edit", new { id = newsItem.Id }) : RedirectToAction("List");
+
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", new {id = newsItem.Id});
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
             //If we got this far, something failed, redisplay form
@@ -291,8 +298,8 @@ namespace Nop.Admin.Controllers
             return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult Comments(int? filterByNewsItemId, GridCommand command)
+        [HttpPost]
+        public ActionResult Comments(int? filterByNewsItemId, DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
                 return AccessDeniedView();
@@ -310,7 +317,7 @@ namespace Nop.Admin.Controllers
                 comments = _newsService.GetAllComments(0);
             }
 
-            var gridModel = new GridModel<NewsCommentModel>
+            var gridModel = new DataSourceResult
             {
                 Data = comments.PagedForCommand(command).Select(newsComment =>
                 {
@@ -328,14 +335,12 @@ namespace Nop.Admin.Controllers
                 }),
                 Total = comments.Count,
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult CommentDelete(int? filterByNewsItemId, int id, GridCommand command)
+        [HttpPost]
+        public ActionResult CommentDelete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageNews))
                 return AccessDeniedView();
@@ -350,7 +355,7 @@ namespace Nop.Admin.Controllers
             newsItem.CommentCount = newsItem.NewsComments.Count;
             _newsService.UpdateNews(newsItem);
 
-            return Comments(filterByNewsItemId, command);
+            return new NullJsonResult();
         }
 
 

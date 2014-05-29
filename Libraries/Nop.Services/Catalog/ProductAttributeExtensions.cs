@@ -27,5 +27,24 @@ namespace Nop.Services.Catalog
             //other attribute controle types support values
             return true;
         }
+
+        /// <summary>
+        /// A value indicating whether this product variant attribute should can have some validation rules
+        /// </summary>
+        /// <param name="productVariantAttribute">Product variant attribute</param>
+        /// <returns>Result</returns>
+        public static bool ValidationRulesAllowed(this ProductVariantAttribute productVariantAttribute)
+        {
+            if (productVariantAttribute == null)
+                return false;
+
+            if (productVariantAttribute.AttributeControlType == AttributeControlType.TextBox ||
+                productVariantAttribute.AttributeControlType == AttributeControlType.MultilineTextbox ||
+                productVariantAttribute.AttributeControlType == AttributeControlType.FileUpload)
+                return true;
+
+            //other attribute controle types does not have validation
+            return false;
+        }
     }
 }

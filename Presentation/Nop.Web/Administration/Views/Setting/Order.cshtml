@@ -1,6 +1,4 @@
 ﻿@model OrderSettingsModel
-@using Telerik.Web.Mvc.UI;
-@using Nop.Core.Domain.Orders;
 @{
     //page title
     ViewBag.Title = T("Admin.Configuration.Settings.Order").Text;
@@ -13,25 +11,77 @@
             @T("Admin.Configuration.Settings.Order")
         </div>
         <div class="options">
-            <input type="submit" name="save" class="t-button" value="@T("Admin.Common.Save")" />
+            <input type="submit" name="save" class="k-button" value="@T("Admin.Common.Save")" />
         </div>
     </div>
     @Html.Action("StoreScopeConfiguration", "Setting")
     @Html.ValidationSummary(false)
 
     
-     
-    @Html.Telerik().TabStrip().Name("ordersettings-edit").Items(x =>
-    {
-        x.Add().Text(T("Admin.Configuration.Settings.Order.OrderSettings").Text).Content(TabOrderSettings().ToHtmlString()).Selected(true);
-        x.Add().Text(T("Admin.Configuration.Settings.Order.ReturnRequestSettings").Text).Content(TabReturnRequestSettings().ToHtmlString());
+    <div id="ordersettings-edit">
+        <ul>
+            <li @Html.RenderSelectedTabIndex(0, GetSelectedTabIndex())>
+                @T("Admin.Configuration.Settings.Order.OrderSettings")
+            </li>
+            <li @Html.RenderSelectedTabIndex(1, GetSelectedTabIndex())>
+                @T("Admin.Configuration.Settings.Order.ReturnRequestSettings")
+            </li>
+        </ul>
+        <div>
+            @TabOrderSettings()
+        </div>
+        <div>
+            @TabReturnRequestSettings()
+        </div>
+    </div>
+    <script>
+        $(document).ready(function() {
+            $("#ordersettings-edit").kendoTabStrip({
+                animation:  {
+                    open: {
+                        effects: "fadeIn"
+                    }
+                },
+                select: tabstrip_on_tab_select
+            });
+        });
+    </script>
 
-        //generate an event
-        EngineContext.Current.Resolve<IEventPublisher>().Publish(new AdminTabStripCreated(x, "ordersettings-edit"));
-    })
+    {
+        //custom tabs
+        var eventMessage = new AdminTabStripCreated(this.Html, "ordersettings-edit");
+        EngineContext.Current.Resolve<IEventPublisher>().Publish(eventMessage);
+        foreach (var eventBlock in eventMessage.BlocksToRender)
+        {
+            @eventBlock
+        }
+    }
+     
+
+     @*save selected tab index*@
+	<input type="hidden" id="selected-tab-index" name="selected-tab-index" value="@(GetSelectedTabIndex())">
 }
 @helper TabOrderSettings()
 {
+    
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $("#@Html.FieldIdFor(model => model.OnePageCheckoutEnabled)").click(toggleOnePageCheckoutEnabled);
+
+            toggleOnePageCheckoutEnabled();
+        });
+
+        function toggleOnePageCheckoutEnabled() {
+            if ($('#@Html.FieldIdFor(model => model.OnePageCheckoutEnabled)').is(':checked')) {
+                $('#pnlOnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab').show();
+            }
+            else {
+                $('#pnlOnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab').hide();
+            }
+        }
+        
+    </script>
     <table class="adminContent">
         <tr>
             <td class="adminTitle">
@@ -75,12 +125,22 @@
         </tr>
         <tr>
             <td class="adminTitle">
-                @Html.OverrideStoreCheckboxFor(model => model.TermsOfServiceEnabled_OverrideForStore, model => model.TermsOfServiceEnabled, Model.ActiveStoreScopeConfiguration)
-                @Html.NopLabelFor(model => model.TermsOfServiceEnabled):
+                @Html.OverrideStoreCheckboxFor(model => model.TermsOfServiceOnShoppingCartPage_OverrideForStore, model => model.TermsOfServiceOnShoppingCartPage, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.TermsOfServiceOnShoppingCartPage):
             </td>
             <td class="adminData">
-                @Html.EditorFor(model => model.TermsOfServiceEnabled)
-                @Html.ValidationMessageFor(model => model.TermsOfServiceEnabled)
+                @Html.EditorFor(model => model.TermsOfServiceOnShoppingCartPage)
+                @Html.ValidationMessageFor(model => model.TermsOfServiceOnShoppingCartPage)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.TermsOfServiceOnOrderConfirmPage_OverrideForStore, model => model.TermsOfServiceOnOrderConfirmPage, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.TermsOfServiceOnOrderConfirmPage):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.TermsOfServiceOnOrderConfirmPage)
+                @Html.ValidationMessageFor(model => model.TermsOfServiceOnOrderConfirmPage)
             </td>
         </tr>
         <tr>
@@ -91,6 +151,56 @@
             <td class="adminData">
                 @Html.EditorFor(model => model.OnePageCheckoutEnabled)
                 @Html.ValidationMessageFor(model => model.OnePageCheckoutEnabled)
+            </td>
+        </tr>
+        <tr id="pnlOnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab">
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab_OverrideForStore, model => model.OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab)
+                @Html.ValidationMessageFor(model => model.OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.DisableBillingAddressCheckoutStep_OverrideForStore, model => model.DisableBillingAddressCheckoutStep, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.DisableBillingAddressCheckoutStep):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.DisableBillingAddressCheckoutStep)
+                @Html.ValidationMessageFor(model => model.DisableBillingAddressCheckoutStep)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.DisableOrderCompletedPage_OverrideForStore, model => model.DisableOrderCompletedPage, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.DisableOrderCompletedPage):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.DisableOrderCompletedPage)
+                @Html.ValidationMessageFor(model => model.DisableOrderCompletedPage)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.AttachPdfInvoiceToOrderPlacedEmail_OverrideForStore, model => model.AttachPdfInvoiceToOrderPlacedEmail, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.AttachPdfInvoiceToOrderPlacedEmail):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.AttachPdfInvoiceToOrderPlacedEmail)
+                @Html.ValidationMessageFor(model => model.AttachPdfInvoiceToOrderPlacedEmail)
+            </td>
+        </tr>
+        <tr>
+            <td class="adminTitle">
+                @Html.OverrideStoreCheckboxFor(model => model.AttachPdfInvoiceToOrderCompletedEmail_OverrideForStore, model => model.AttachPdfInvoiceToOrderCompletedEmail, Model.ActiveStoreScopeConfiguration)
+                @Html.NopLabelFor(model => model.AttachPdfInvoiceToOrderCompletedEmail):
+            </td>
+            <td class="adminData">
+                @Html.EditorFor(model => model.AttachPdfInvoiceToOrderCompletedEmail)
+                @Html.ValidationMessageFor(model => model.AttachPdfInvoiceToOrderCompletedEmail)
             </td>
         </tr>
         <tr>

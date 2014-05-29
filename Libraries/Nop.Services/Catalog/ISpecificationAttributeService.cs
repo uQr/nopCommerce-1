@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Nop.Core;
 using Nop.Core.Domain.Catalog;
 
 namespace Nop.Services.Catalog
@@ -20,8 +21,10 @@ namespace Nop.Services.Catalog
         /// <summary>
         /// Gets specification attributes
         /// </summary>
+        /// <param name="pageIndex">Page index</param>
+        /// <param name="pageSize">Page size</param>
         /// <returns>Specification attributes</returns>
-        IList<SpecificationAttribute> GetSpecificationAttributes();
+        IPagedList<SpecificationAttribute> GetSpecificationAttributes(int pageIndex = 0, int pageSize = int.MaxValue);
 
         /// <summary>
         /// Deletes a specification attribute
@@ -51,6 +54,13 @@ namespace Nop.Services.Catalog
         /// <param name="specificationAttributeOption">The specification attribute option</param>
         /// <returns>Specification attribute option</returns>
         SpecificationAttributeOption GetSpecificationAttributeOptionById(int specificationAttributeOption);
+
+        /// <summary>
+        /// Get specification attribute options by identifiers
+        /// </summary>
+        /// <param name="specificationAttributeOptionIds">Identifiers</param>
+        /// <returns>Specification attribute options</returns>
+        IList<SpecificationAttributeOption> GetSpecificationAttributeOptionsByIds(int[] specificationAttributeOptionIds);
 
         /// <summary>
         /// Gets a specification attribute option by specification attribute id

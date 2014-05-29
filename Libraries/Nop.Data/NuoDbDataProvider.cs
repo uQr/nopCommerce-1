@@ -1,32 +1,39 @@
 ﻿using System.Data.Common;
 using System.Data.Entity;
-using System.Data.Entity.Infrastructure;
+using Nop.Core.Data;
 using Nop.Data.Initializers;
 using NuoDb.Data.Client;
-using NuoDb.Data.Client.EntityFramework;
+using NuoDb.Data.Client.EntityFramework6;
 
 namespace Nop.Data
 {
-    public class NuoDbDataProvider : BaseEfDataProvider
-    {
-        public override IDbConnectionFactory GetConnectionFactory()
-        {
-            return new NuoDbConnectionFactory();
-        }
+	public class NuoDbDataProvider : IDataProvider
+	{
+		public void InitConnectionFactory()
+		{
+#pragma warning disable 0618
+			Database.DefaultConnectionFactory = new NuoDbConnectionFactory();
+		}
 
-        public override void SetDatabaseInitializer()
-        {
-            Database.SetInitializer(new NuoDbDatabaseInitializer<NopObjectContext>());
-        }
+		public void SetDatabaseInitializer()
+		{
+			Database.SetInitializer(new NuoDbDatabaseInitializer<NopObjectContext>());
+		}
 
-        public override bool StoredProceduredSupported
-        {
-            get { return false; }
-        }
+		public void InitDatabase()
+		{
+			InitConnectionFactory();
+			SetDatabaseInitializer();
+		}
 
-        public override DbParameter GetParameter()
-        {
-            return new NuoDbParameter();
-        }
-    }
+		public bool StoredProceduredSupported
+		{
+			get { return false; }
+		}
+
+		public DbParameter GetParameter()
+		{
+			return new NuoDbParameter();
+		}
+	}
 }

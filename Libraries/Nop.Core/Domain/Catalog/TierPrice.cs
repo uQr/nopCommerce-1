@@ -8,9 +8,15 @@ namespace Nop.Core.Domain.Catalog
     public partial class TierPrice : BaseEntity
     {
         /// <summary>
-        /// Gets or sets the product variant identifier
+        /// Gets or sets the product identifier
         /// </summary>
-        public int ProductVariantId { get; set; }
+        public int ProductId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the store identifier (0 - all stores)
+        /// </summary>
+        public int StoreId { get; set; }
+
         /// <summary>
         /// Gets or sets the customer role identifier
         /// </summary>
@@ -27,9 +33,9 @@ namespace Nop.Core.Domain.Catalog
         public decimal Price { get; set; }
 
         /// <summary>
-        /// Gets or sets the product variant
+        /// Gets or sets the product
         /// </summary>
-        public virtual ProductVariant ProductVariant { get; set; }
+        public virtual Product Product { get; set; }
 
         /// <summary>
         /// Gets or sets the customer role

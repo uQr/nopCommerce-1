@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Web;
 using System.Web.Hosting;
 using Nop.Core.Data;
-using Nop.Core.Domain;
 using Nop.Core.Infrastructure;
 
 namespace Nop.Core
@@ -44,21 +43,54 @@ namespace Nop.Core
 
             return referrerUrl;
         }
-        
+
         /// <summary>
         /// Get context IP address
         /// </summary>
         /// <returns>URL referrer</returns>
         public virtual string GetCurrentIpAddress()
         {
-            if (_httpContext != null &&
-                _httpContext.Request != null &&
-                _httpContext.Request.UserHostAddress != null)
-                return _httpContext.Request.UserHostAddress;
+            if (_httpContext == null || _httpContext.Request == null)
+                return string.Empty;
+
+            var result = "";
+            if (_httpContext.Request.Headers != null)
+            {
+                //look for the X-Forwarded-For (XFF) HTTP header field
+                //it's used for identifying the originating IP address of a client connecting to a web server through an HTTP proxy or load balancer. 
+                string xff = _httpContext.Request.Headers.AllKeys
+                    .Where(x => "X-FORWARDED-FOR".Equals(x, StringComparison.InvariantCultureIgnoreCase))
+                    .Select(k => _httpContext.Request.Headers[k])
+                    .FirstOrDefault();
+
+                //if you want to exclude private IP addresses, then see http://stackoverflow.com/questions/2577496/how-can-i-get-the-clients-ip-address-in-asp-net-mvc
+
+                if (!String.IsNullOrEmpty(xff))
+                {
+                    string lastIp = xff.Split(new char[] { ',' }).FirstOrDefault();
+                    result = lastIp;
+                }
+            }
+
+            if (String.IsNullOrEmpty(result) && _httpContext.Request.UserHostAddress != null)
+            {
+                result = _httpContext.Request.UserHostAddress;
+            }
+
+            //some validation
+            if (result == "::1")
+                result = "127.0.0.1";
+            //remove port
+            if (!String.IsNullOrEmpty(result))
+            {
+                int index = result.IndexOf(":", StringComparison.InvariantCultureIgnoreCase);
+                if (index > 0)
+                    result = result.Substring(0, index); 
+            }
+            return result;
             
-            return string.Empty;
         }
-        
+
         /// <summary>
         /// Gets this page name
         /// </summary>
@@ -581,7 +613,7 @@ namespace Nop.Core
                 //That's why you get these nasty errors 
                 //i.e "Controller does not implement IController".
                 //The issue is described here: http://www.nopcommerce.com/boards/t/10969/nop-20-plugin.aspx?p=4#51318
-                //The solutino is to touch global.asax file
+                //The solution is to touch global.asax file
                 File.SetLastWriteTimeUtc(MapPath("~/global.asax"), DateTime.UtcNow);
                 return true;
             }

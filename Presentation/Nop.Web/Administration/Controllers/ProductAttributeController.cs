@@ -7,12 +7,11 @@ using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class ProductAttributeController : BaseNopController
+    public partial class ProductAttributeController : BaseAdminController
     {
         #region Fields
 
@@ -76,31 +75,24 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))
                 return AccessDeniedView();
 
-            var productAttributes = _productAttributeService.GetAllProductAttributes();
-            var gridModel = new GridModel<ProductAttributeModel>
-            {
-                Data = productAttributes.Select(x => x.ToModel()),
-                Total = productAttributes.Count()
-            };
-            return View(gridModel);
+            return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))
                 return AccessDeniedView();
 
-            var productAttributes = _productAttributeService.GetAllProductAttributes();
-            var gridModel = new GridModel<ProductAttributeModel>
+            var productAttributes = _productAttributeService
+                .GetAllProductAttributes(command.Page - 1, command.PageSize);
+            var gridModel = new DataSourceResult
             {
                 Data = productAttributes.Select(x => x.ToModel()),
-                Total = productAttributes.Count()
+                Total = productAttributes.TotalCount
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
         
         //create
@@ -115,7 +107,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(ProductAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))
@@ -160,7 +152,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Edit(ProductAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))

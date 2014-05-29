@@ -130,10 +130,10 @@ namespace Nop.Plugin.Shipping.USPS
                 throw new NopException("Primary dimension can't be loaded");
 
 
-            int length = Convert.ToInt32(Math.Ceiling(getShippingOptionRequest.GetTotalLength() / baseusedMeasureDimension.Ratio * usedMeasureDimension.Ratio));
-            int height = Convert.ToInt32(Math.Ceiling(getShippingOptionRequest.GetTotalHeight() / baseusedMeasureDimension.Ratio * usedMeasureDimension.Ratio));
-            int width = Convert.ToInt32(Math.Ceiling(getShippingOptionRequest.GetTotalWidth() / baseusedMeasureDimension.Ratio * usedMeasureDimension.Ratio));
-            int weight = Convert.ToInt32(Math.Ceiling(_shippingService.GetShoppingCartTotalWeight(getShippingOptionRequest.Items) / baseusedMeasureWeight.Ratio * usedMeasureWeight.Ratio));
+            int length = Convert.ToInt32(Math.Ceiling(_shippingService.GetTotalLength(getShippingOptionRequest.Items) / baseusedMeasureDimension.Ratio * usedMeasureDimension.Ratio));
+            int height = Convert.ToInt32(Math.Ceiling(_shippingService.GetTotalHeight(getShippingOptionRequest.Items) / baseusedMeasureDimension.Ratio * usedMeasureDimension.Ratio));
+            int width = Convert.ToInt32(Math.Ceiling(_shippingService.GetTotalWidth(getShippingOptionRequest.Items) / baseusedMeasureDimension.Ratio * usedMeasureDimension.Ratio));
+            int weight = Convert.ToInt32(Math.Ceiling(_shippingService.GetTotalWeight(getShippingOptionRequest.Items) / baseusedMeasureWeight.Ratio * usedMeasureWeight.Ratio));
             
 
             if (length < 1)
@@ -324,6 +324,15 @@ namespace Nop.Plugin.Shipping.USPS
                 string mailType = "Package"; //Package, Envelope
                 var packageSize = GetPackageSize(length, height, width);
 
+                var countryName = getShippingOptionRequest.ShippingAddress.Country.Name;
+                //USPS country hacks
+                //The USPS wants the NAME of the country for international shipments rather than one of the ISO codes
+                //It requires "Korea, Republic of (South Korea)" rather than "Korea".
+                if (countryName == "Korea")
+                {
+                    countryName = "Korea, Republic of (South Korea)";
+                }
+
                 if ((!IsPackageTooHeavy(pounds)) && (!IsPackageTooLarge(length, height, width)))
                 {
                     sb.Append("<Package ID=\"0\">");
@@ -336,7 +345,7 @@ namespace Nop.Plugin.Shipping.USPS
                     sb.Append("<GiftFlag>N</GiftFlag>");
                     sb.Append("</GXG>");
                     sb.AppendFormat("<ValueOfContents>{0}</ValueOfContents>", intlSubTotal);
-                    sb.AppendFormat("<Country>{0}</Country>", getShippingOptionRequest.ShippingAddress.Country.Name);
+                    sb.AppendFormat("<Country>{0}</Country>", countryName);
                     sb.Append("<Container>RECTANGULAR</Container>");
                     sb.AppendFormat("<Size>{0}</Size>", packageSize);
                     sb.AppendFormat("<Width>{0}</Width>", width);
@@ -397,7 +406,7 @@ namespace Nop.Plugin.Shipping.USPS
                         sb.Append("<GiftFlag>N</GiftFlag>");
                         sb.Append("</GXG>");
                         sb.AppendFormat("<ValueOfContents>{0}</ValueOfContents>", intlSubTotal);
-                        sb.AppendFormat("<Country>{0}</Country>", getShippingOptionRequest.ShippingAddress.Country.Name);
+                        sb.AppendFormat("<Country>{0}</Country>", countryName);
                         sb.Append("<Container>RECTANGULAR</Container>");
                         sb.AppendFormat("<Size>{0}</Size>", packageSize2);
                         sb.AppendFormat("<Width>{0}</Width>", width2);
@@ -559,7 +568,9 @@ namespace Nop.Plugin.Shipping.USPS
                         char reg = (char)174; // registered sign "\u00AE"
                         string tm = "\u2122"; // trademark sign
                         serviceCode = serviceCode.Replace("&lt;sup&gt;&amp;reg;&lt;/sup&gt;", reg.ToString());
+                        serviceCode = serviceCode.Replace("&lt;sup&gt;&#174;&lt;/sup&gt;", reg.ToString());
                         serviceCode = serviceCode.Replace("&lt;sup&gt;&amp;trade;&lt;/sup&gt;", tm);
+                        serviceCode = serviceCode.Replace("&lt;sup&gt;&#8482;&lt;/sup&gt;", tm);
 
                         ShippingOption shippingOption = shippingOptions.Find((s) => s.Name == serviceCode);
                         if (shippingOption == null)
@@ -603,11 +614,7 @@ namespace Nop.Plugin.Shipping.USPS
                 response.AddError("Shipping address is not set");
                 return response;
             }
-
-            if (String.IsNullOrEmpty(getShippingOptionRequest.ZipPostalCodeFrom))
-                getShippingOptionRequest.ZipPostalCodeFrom = _uspsSettings.ZipPostalCodeFrom;
-
-
+            
             bool isDomestic = IsDomesticRequest(getShippingOptionRequest);
             string requestString = CreateRequest(_uspsSettings.Username, _uspsSettings.Password, getShippingOptionRequest);
             string responseXml = DoRequest(_uspsSettings.Url, requestString);
@@ -666,7 +673,6 @@ namespace Nop.Plugin.Shipping.USPS
                 Username = "123",
                 Password = "456",
                 AdditionalHandlingCharge = 0,
-                ZipPostalCodeFrom = "10022",
                 CarrierServicesOfferedDomestic = "",
                 CarrierServicesOfferedInternational = ""
             };
@@ -682,8 +688,6 @@ namespace Nop.Plugin.Shipping.USPS
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.Password.Hint", "Specify USPS password.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AdditionalHandlingCharge", "Additional handling charge");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AdditionalHandlingCharge.Hint", "Enter additional handling fee to charge your customers.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.ZipPostalCodeFrom", "Shipped from zip");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.ZipPostalCodeFrom.Hint", "Specify origin zip code.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesDomestic", "Domestic Carrier Services");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesDomestic.Hint", "Select the services you want to offer to customers.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesInternational", "International Carrier Services");
@@ -709,8 +713,6 @@ namespace Nop.Plugin.Shipping.USPS
             this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.Password.Hint");
             this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AdditionalHandlingCharge");
             this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AdditionalHandlingCharge.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.ZipPostalCodeFrom");
-            this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.ZipPostalCodeFrom.Hint");
             this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesDomestic");
             this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesDomestic.Hint");
             this.DeletePluginLocaleResource("Plugins.Shipping.USPS.Fields.AvailableCarrierServicesInternational");

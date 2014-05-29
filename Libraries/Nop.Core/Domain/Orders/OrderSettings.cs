@@ -26,9 +26,14 @@ namespace Nop.Core.Domain.Orders
         public bool AnonymousCheckoutAllowed { get; set; }
 
         /// <summary>
-        /// Gets or sets a value indicating whether 'Terms of service' enabled
+        /// Gets or sets a value indicating whether 'Terms of service' enabled on the shopping cart page
         /// </summary>
-        public bool TermsOfServiceEnabled { get; set; }
+        public bool TermsOfServiceOnShoppingCartPage { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether 'Terms of service' enabled on the order confirmation page
+        /// </summary>
+        public bool TermsOfServiceOnOrderConfirmPage { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether 'One-page checkout' is enabled
@@ -39,6 +44,26 @@ namespace Nop.Core.Domain.Orders
         /// Gets or sets a value indicating whether order totals should be displayed on 'Payment info' tab of 'One-page checkout' page
         /// </summary>
         public bool OnePageCheckoutDisplayOrderTotalsOnPaymentInfoTab { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether "Billing address" step should be skipped
+        /// </summary>
+        public bool DisableBillingAddressCheckoutStep { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether "Order completed" page should be skipped
+        /// </summary>
+        public bool DisableOrderCompletedPage { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating we should attach PDF invoice to "Order places" email
+        /// </summary>
+        public bool AttachPdfInvoiceToOrderPlacedEmail { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating we should attach PDF invoice to "Order completed" email
+        /// </summary>
+        public bool AttachPdfInvoiceToOrderCompletedEmail { get; set; }
         
         /// <summary>
         /// Gets or sets a value indicating whether "Return requests" are allowed
@@ -74,6 +99,5 @@ namespace Nop.Core.Domain.Orders
         /// Gets or sets an order placement interval in seconds (prevent 2 orders being placed within an X seconds time frame).
         /// </summary>
         public int MinimumOrderPlacementInterval { get; set; }
-
     }
 }

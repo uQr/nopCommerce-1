@@ -8,8 +8,8 @@ namespace Nop.Services.Tests.Security
     [TestFixture]
     public class EncryptionServiceTests : ServiceTest
     {
-        IEncryptionService _encryptionService;
-        SecuritySettings _securitySettings;
+        private IEncryptionService _encryptionService;
+        private SecuritySettings _securitySettings;
 
         [SetUp]
         public new void SetUp() 

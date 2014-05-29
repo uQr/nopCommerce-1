@@ -6,7 +6,6 @@ using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
-using Nop.Core.Domain.Stores;
 using Nop.Data;
 using Nop.Services.Events;
 
@@ -131,11 +130,9 @@ namespace Nop.Services.Catalog
                                 {
                                     Id = pt.Id,
                                     ProductCount = pt.Products
-                                        //published and not deleted product/variants
-                                        .Count(p => !p.Deleted &&
-                                            p.Published &&
-                                            p.ProductVariants.Any(pv => !pv.Deleted && pv.Published))
-                                    //UNDOEN filter by store identifier if specified ( > 0 )
+                                        //published and not deleted products
+                                        .Count(p => !p.Deleted && p.Published)
+                                    //UNDONE filter by store identifier if specified ( > 0 )
                                 };
 
                     var dictionary = new Dictionary<int, int>();

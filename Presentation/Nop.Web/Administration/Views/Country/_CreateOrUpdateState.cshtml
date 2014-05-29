@@ -1,5 +1,4 @@
 ﻿@model StateProvinceModel
-@using Telerik.Web.Mvc.UI;
 @Html.ValidationSummary(false)
 @Html.HiddenFor(model => model.Id)
 @Html.HiddenFor(model => model.CountryId)
@@ -18,7 +17,7 @@
             @Html.NopLabelFor(model => model.Locales[item].Name):
         </td>
         <td class="adminData">
-            @Html.EditorFor(model => Model.Locales[item].Name)
+            @Html.EditorFor(model => model.Locales[item].Name)
             @Html.ValidationMessageFor(model => model.Locales[item].Name)
         </td>
     </tr>

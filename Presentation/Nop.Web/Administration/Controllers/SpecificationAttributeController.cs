@@ -8,12 +8,12 @@ using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Security;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class SpecificationAttributeController : BaseNopController
+    public partial class SpecificationAttributeController : BaseAdminController
     {
         #region Fields
 
@@ -23,15 +23,18 @@ namespace Nop.Admin.Controllers
         private readonly ILocalizationService _localizationService;
         private readonly ICustomerActivityService _customerActivityService;
         private readonly IPermissionService _permissionService;
+        private readonly IProductService _productService;
 
         #endregion Fields
 
         #region Constructors
 
         public SpecificationAttributeController(ISpecificationAttributeService specificationAttributeService,
-            ILanguageService languageService, ILocalizedEntityService localizedEntityService,
-            ILocalizationService localizationService, ICustomerActivityService customerActivityService,
-            IPermissionService permissionService)
+            ILanguageService languageService, 
+            ILocalizedEntityService localizedEntityService,
+            ILocalizationService localizationService, 
+            ICustomerActivityService customerActivityService,
+            IPermissionService permissionService, IProductService productService)
         {
             this._specificationAttributeService = specificationAttributeService;
             this._languageService = languageService;
@@ -39,6 +42,7 @@ namespace Nop.Admin.Controllers
             this._localizationService = localizationService;
             this._customerActivityService = customerActivityService;
             this._permissionService = permissionService;
+            this._productService = productService;
         }
 
         #endregion
@@ -84,31 +88,24 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))
                 return AccessDeniedView();
 
-            var specificationAttributes = _specificationAttributeService.GetSpecificationAttributes();
-            var gridModel = new GridModel<SpecificationAttributeModel>
-            {
-                Data = specificationAttributes.Select(x => x.ToModel()),
-                Total = specificationAttributes.Count()
-            };
-            return View(gridModel);
+            return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))
                 return AccessDeniedView();
 
-            var specificationAttributes = _specificationAttributeService.GetSpecificationAttributes();
-            var gridModel = new GridModel<SpecificationAttributeModel>
+            var specificationAttributes = _specificationAttributeService
+                .GetSpecificationAttributes(command.Page - 1, command.PageSize);
+            var gridModel = new DataSourceResult
             {
                 Data = specificationAttributes.Select(x => x.ToModel()),
-                Total = specificationAttributes.Count()
+                Total = specificationAttributes.TotalCount
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
         
         //create
@@ -123,7 +120,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(SpecificationAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))
@@ -167,7 +164,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Edit(SpecificationAttributeModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))
@@ -189,7 +186,18 @@ namespace Nop.Admin.Controllers
                 _customerActivityService.InsertActivity("EditSpecAttribute", _localizationService.GetResource("ActivityLog.EditSpecAttribute"), specificationAttribute.Name);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Catalog.Attributes.SpecificationAttributes.Updated"));
-                return continueEditing ? RedirectToAction("Edit", specificationAttribute.Id) : RedirectToAction("List");
+
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", specificationAttribute.Id);
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
             //If we got this far, something failed, redisplay form
@@ -222,18 +230,20 @@ namespace Nop.Admin.Controllers
         #region Specification attribute options
 
         //list
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult OptionList(int specificationAttributeId, GridCommand command)
+        [HttpPost]
+        public ActionResult OptionList(int specificationAttributeId, DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))
                 return AccessDeniedView();
 
             var options = _specificationAttributeService.GetSpecificationAttributeOptionsBySpecificationAttribute(specificationAttributeId);
-            var gridModel = new GridModel<SpecificationAttributeOptionModel>
+            var gridModel = new DataSourceResult
             {
                 Data = options.Select(x => 
                     {
                         var model = x.ToModel();
+                        //in order to save performance to do not check whether a product isn't deleted
+                        model.NumberOfAssociatedProducts = x.ProductSpecificationAttributes.Count;
                         //locales
                         //AddLocales(_languageService, model.Locales, (locale, languageId) =>
                         //{
@@ -243,10 +253,8 @@ namespace Nop.Admin.Controllers
                     }),
                 Total = options.Count()
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
 
         //create
@@ -340,19 +348,19 @@ namespace Nop.Admin.Controllers
         }
 
         //delete
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult OptionDelete(int optionId, int specificationAttributeId, GridCommand command)
+        [HttpPost]
+        public ActionResult OptionDelete(int id, int specificationAttributeId)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageAttributes))
                 return AccessDeniedView();
 
-            var sao = _specificationAttributeService.GetSpecificationAttributeOptionById(optionId);
+            var sao = _specificationAttributeService.GetSpecificationAttributeOptionById(id);
             if (sao == null)
                 throw new ArgumentException("No specification attribute option found with the specified id");
 
             _specificationAttributeService.DeleteSpecificationAttributeOption(sao);
 
-            return OptionList(specificationAttributeId, command);
+            return new NullJsonResult();
         }
 
 

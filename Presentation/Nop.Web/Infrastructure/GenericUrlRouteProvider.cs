@@ -31,6 +31,11 @@ namespace Nop.Web.Infrastructure
                             new { controller = "Catalog", action = "Manufacturer" },
                             new[] { "Nop.Web.Controllers" });
 
+            routes.MapLocalizedRoute("Vendor",
+                            "{SeName}",
+                            new { controller = "Catalog", action = "Vendor" },
+                            new[] { "Nop.Web.Controllers" });
+            
             routes.MapLocalizedRoute("NewsItem",
                             "{SeName}",
                             new { controller = "News", action = "NewsItem" },
@@ -39,6 +44,11 @@ namespace Nop.Web.Infrastructure
             routes.MapLocalizedRoute("BlogPost",
                             "{SeName}",
                             new { controller = "Blog", action = "BlogPost" },
+                            new[] { "Nop.Web.Controllers" });
+
+            routes.MapLocalizedRoute("Topic",
+                            "{SeName}",
+                            new { controller = "Topic", action = "TopicDetails" },
                             new[] { "Nop.Web.Controllers" });
 
 
@@ -57,7 +67,8 @@ namespace Nop.Web.Infrastructure
             get
             {
                 //it should be the last route
-                return -int.MaxValue;
+                //we do not set it to -int.MaxValue so it could be overriden (if required)
+                return -1000000;
             }
         }
     }

@@ -25,6 +25,8 @@ namespace Nop.Web.Models.ShoppingCart
             ButtonPaymentMethodRouteValues = new List<RouteValueDictionary>();
         }
 
+        public bool OnePageCheckoutEnabled { get; set; }
+
         public bool ShowSku { get; set; }
         public bool ShowProductImages { get; set; }
         public bool IsEditable { get; set; }
@@ -35,7 +37,8 @@ namespace Nop.Web.Models.ShoppingCart
 
         public IList<string> Warnings { get; set; }
         public string MinOrderSubtotalWarning { get; set; }
-        public bool TermsOfServiceEnabled { get; set; }
+        public bool TermsOfServiceOnShoppingCartPage { get; set; }
+        public bool TermsOfServiceOnOrderConfirmPage { get; set; }
         public EstimateShippingModel EstimateShipping { get; set; }
         public DiscountBoxModel DiscountBox { get; set; }
         public GiftCardBoxModel GiftCardBox { get; set; }
@@ -78,6 +81,8 @@ namespace Nop.Web.Models.ShoppingCart
 
             public string RecurringInfo { get; set; }
 
+            public bool AllowItemEditing { get; set; }
+
             public IList<string> Warnings { get; set; }
 
         }
@@ -86,6 +91,7 @@ namespace Nop.Web.Models.ShoppingCart
         {
             public CheckoutAttributeModel()
             {
+                AllowedFileExtensions = new List<string>();
                 Values = new List<CheckoutAttributeValueModel>();
             }
 
@@ -109,6 +115,11 @@ namespace Nop.Web.Models.ShoppingCart
             /// Selected year value for datepicker
             /// </summary>
             public int? SelectedYear { get; set; }
+
+            /// <summary>
+            /// Allowed file extensions for customer uploaded files
+            /// </summary>
+            public IList<string> AllowedFileExtensions { get; set; }
 
             public AttributeControlType AttributeControlType { get; set; }
 

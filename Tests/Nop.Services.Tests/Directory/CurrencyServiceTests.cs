@@ -4,12 +4,10 @@ using System.Linq;
 using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Directory;
-using Nop.Core.Domain.Stores;
-using Nop.Core.Infrastructure;
 using Nop.Core.Plugins;
-using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Events;
+using Nop.Services.Stores;
 using Nop.Tests;
 using NUnit.Framework;
 using Rhino.Mocks;
@@ -19,13 +17,13 @@ namespace Nop.Services.Tests.Directory
     [TestFixture]
     public class CurrencyServiceTests : ServiceTest
     {
-        IRepository<Currency> _currencyRepository;
-        IRepository<StoreMapping> _storeMappingRepo;
-        CurrencySettings _currencySettings;
-        IEventPublisher _eventPublisher;
-        ICurrencyService _currencyService;
+        private IRepository<Currency> _currencyRepository;
+        private IStoreMappingService _storeMappingService;
+        private CurrencySettings _currencySettings;
+        private IEventPublisher _eventPublisher;
+        private ICurrencyService _currencyService;
 
-        Currency currencyUSD, currencyRUR, currencyEUR;
+        private Currency currencyUSD, currencyRUR, currencyEUR;
         
         [SetUp]
         public new void SetUp()
@@ -75,7 +73,7 @@ namespace Nop.Services.Tests.Directory
             _currencyRepository.Expect(x => x.GetById(currencyEUR.Id)).Return(currencyEUR);
             _currencyRepository.Expect(x => x.GetById(currencyRUR.Id)).Return(currencyRUR);
 
-            _storeMappingRepo = MockRepository.GenerateMock<IRepository<StoreMapping>>();
+            _storeMappingService = MockRepository.GenerateMock<IStoreMappingService>();
 
             var cacheManager = new NopNullCache();
             
@@ -88,7 +86,7 @@ namespace Nop.Services.Tests.Directory
             
             var pluginFinder = new PluginFinder();
             _currencyService = new CurrencyService(cacheManager,
-                _currencyRepository, _storeMappingRepo, 
+                _currencyRepository, _storeMappingService, 
                 _currencySettings, pluginFinder, _eventPublisher);
         }
         

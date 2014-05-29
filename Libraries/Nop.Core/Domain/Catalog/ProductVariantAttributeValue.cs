@@ -14,6 +14,16 @@ namespace Nop.Core.Domain.Catalog
         public int ProductVariantAttributeId { get; set; }
 
         /// <summary>
+        /// Gets or sets the attribute value type identifier
+        /// </summary>
+        public int AttributeValueTypeId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the associated product identifier (used only with AttributeValueType.AssociatedToProduct)
+        /// </summary>
+        public int AssociatedProductId { get; set; }
+
+        /// <summary>
         /// Gets or sets the product variant attribute name
         /// </summary>
         public string Name { get; set; }
@@ -24,14 +34,24 @@ namespace Nop.Core.Domain.Catalog
         public string ColorSquaresRgb { get; set; }
 
         /// <summary>
-        /// Gets or sets the price adjustment
+        /// Gets or sets the price adjustment (used only with AttributeValueType.Simple)
         /// </summary>
         public decimal PriceAdjustment { get; set; }
 
         /// <summary>
-        /// Gets or sets the weight adjustment
+        /// Gets or sets the weight adjustment (used only with AttributeValueType.Simple)
         /// </summary>
         public decimal WeightAdjustment { get; set; }
+
+        /// <summary>
+        /// Gets or sets the attibute value cost (used only with AttributeValueType.Simple)
+        /// </summary>
+        public decimal Cost { get; set; }
+
+        /// <summary>
+        /// Gets or sets the quantity of associated product (used only with AttributeValueType.AssociatedToProduct)
+        /// </summary>
+        public int Quantity { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the value is pre-selected
@@ -42,11 +62,30 @@ namespace Nop.Core.Domain.Catalog
         /// Gets or sets the display order
         /// </summary>
         public int DisplayOrder { get; set; }
-        
+
+        /// <summary>
+        /// Gets or sets the picture (identifier) associated with this value
+        /// </summary>
+        public int PictureId { get; set; }
+
         /// <summary>
         /// Gets the product variant attribute
         /// </summary>
         public virtual ProductVariantAttribute ProductVariantAttribute { get; set; }
-    }
 
+        /// <summary>
+        /// Gets or sets the attribute value type
+        /// </summary>
+        public AttributeValueType AttributeValueType
+        {
+            get
+            {
+                return (AttributeValueType)this.AttributeValueTypeId;
+            }
+            set
+            {
+                this.AttributeValueTypeId = (int)value;
+            }
+        }
+    }
 }

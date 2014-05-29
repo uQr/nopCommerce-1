@@ -8,13 +8,12 @@ using Nop.Core.Caching;
 using Nop.Core.Data;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Localization;
-using Nop.Core.Domain.Stores;
 using Nop.Core.Domain.Tax;
 using Nop.Core.Plugins;
 using Nop.Services.Catalog;
-using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
+using Nop.Services.Stores;
 using Nop.Tests;
 using NUnit.Framework;
 using Rhino.Mocks;
@@ -24,14 +23,14 @@ namespace Nop.Services.Tests.Catalog
     [TestFixture]
     public class PriceFormatterTests : ServiceTest
     {
-        IRepository<Currency> _currencyRepo;
-        IRepository<StoreMapping> _storeMappingRepo;
-        ICurrencyService _currencyService;
-        CurrencySettings _currencySettings;
-        IWorkContext _workContext;
-        ILocalizationService _localizationService;
-        TaxSettings _taxSettings;
-        IPriceFormatter _priceFormatter;
+        private IRepository<Currency> _currencyRepo;
+        private IStoreMappingService _storeMappingService;
+        private ICurrencyService _currencyService;
+        private CurrencySettings _currencySettings;
+        private IWorkContext _workContext;
+        private ILocalizationService _localizationService;
+        private TaxSettings _taxSettings;
+        private IPriceFormatter _priceFormatter;
         
         [SetUp]
         public new void SetUp()
@@ -68,10 +67,10 @@ namespace Nop.Services.Tests.Catalog
             _currencyRepo = MockRepository.GenerateMock<IRepository<Currency>>();
             _currencyRepo.Expect(x => x.Table).Return(new List<Currency>() { currency1, currency2 }.AsQueryable());
 
-            _storeMappingRepo = MockRepository.GenerateMock<IRepository<StoreMapping>>();
+            _storeMappingService = MockRepository.GenerateMock<IStoreMappingService>();
 
             var pluginFinder = new PluginFinder();
-            _currencyService = new CurrencyService(cacheManager, _currencyRepo,_storeMappingRepo,
+            _currencyService = new CurrencyService(cacheManager, _currencyRepo, _storeMappingService,
                 _currencySettings, pluginFinder, null);
 
             _taxSettings = new TaxSettings();

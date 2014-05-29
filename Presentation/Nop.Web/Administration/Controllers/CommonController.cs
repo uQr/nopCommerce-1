@@ -1,17 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.Web;
+using System.Web.Configuration;
 using System.Web.Mvc;
 using Nop.Admin.Models.Common;
 using Nop.Core;
 using Nop.Core.Caching;
-using Nop.Core.Domain;
+using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Seo;
 using Nop.Core.Plugins;
+using Nop.Services.Common;
 using Nop.Services.Customers;
 using Nop.Services.Directory;
 using Nop.Services.Helpers;
@@ -21,14 +25,14 @@ using Nop.Services.Payments;
 using Nop.Services.Security;
 using Nop.Services.Seo;
 using Nop.Services.Shipping;
+using Nop.Services.Stores;
 using Nop.Web.Framework.Controllers;
+using Nop.Web.Framework.Kendoui;
 using Nop.Web.Framework.Security;
-using Telerik.Web.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class CommonController : BaseNopController
+    public partial class CommonController : BaseAdminController
     {
         #region Fields
 
@@ -48,6 +52,10 @@ namespace Nop.Admin.Controllers
         private readonly IStoreContext _storeContext;
         private readonly IPermissionService _permissionService;
         private readonly ILocalizationService _localizationService;
+        private readonly ISearchTermService _searchTermService;
+        private readonly IStoreService _storeService;
+        private readonly CatalogSettings _catalogSettings;
+        private readonly HttpContextBase _httpContext;
 
         #endregion
 
@@ -68,7 +76,11 @@ namespace Nop.Admin.Controllers
             IWorkContext workContext,
             IStoreContext storeContext,
             IPermissionService permissionService, 
-            ILocalizationService localizationService)
+            ILocalizationService localizationService,
+            ISearchTermService searchTermService,
+            IStoreService storeService,
+            CatalogSettings catalogSettings,
+            HttpContextBase httpContext)
         {
             this._paymentService = paymentService;
             this._shippingService = shippingService;
@@ -86,6 +98,10 @@ namespace Nop.Admin.Controllers
             this._storeContext = storeContext;
             this._permissionService = permissionService;
             this._localizationService = localizationService;
+            this._searchTermService = searchTermService;
+            this._storeService = storeService;
+            this._catalogSettings = catalogSettings;
+            this._httpContext = httpContext;
         }
 
         #endregion
@@ -118,6 +134,14 @@ namespace Nop.Admin.Controllers
             model.ServerLocalTime = DateTime.Now;
             model.UtcTime = DateTime.UtcNow;
             model.HttpHost = _webHelper.ServerVariables("HTTP_HOST");
+            foreach (var key in _httpContext.Request.ServerVariables.AllKeys)
+            {
+                model.ServerVariables.Add(new SystemInfoModel.ServerVariableModel()
+                {
+                    Name = key,
+                    Value = _httpContext.Request.ServerVariables[key]
+                });
+            }
             //Environment.GetEnvironmentVariable("USERNAME");
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
@@ -263,8 +287,14 @@ namespace Nop.Admin.Controllers
             }
 
             //shipping rate coputation methods
-            if (_shippingService.LoadActiveShippingRateComputationMethods()
-                .Count(x => x.ShippingRateComputationMethodType == ShippingRateComputationMethodType.Offline)  > 1)
+            var srcMethods = _shippingService.LoadActiveShippingRateComputationMethods();
+            if (srcMethods.Count == 0)
+                model.Add(new SystemWarningModel()
+                {
+                    Level = SystemWarningLevel.Fail,
+                    Text = _localizationService.GetResource("Admin.System.Warnings.Shipping.NoComputationMethods")
+                });
+            if (srcMethods.Count(x => x.ShippingRateComputationMethodType == ShippingRateComputationMethodType.Offline) > 1)
                 model.Add(new SystemWarningModel()
                 {
                     Level = SystemWarningLevel.Warning,
@@ -293,6 +323,24 @@ namespace Nop.Admin.Controllers
                         Level = SystemWarningLevel.Warning,
                         Text = string.Format(_localizationService.GetResource("Admin.System.Warnings.IncompatiblePlugin"), pluginName )
                     });
+
+            //performance settings
+            if (!_catalogSettings.IgnoreStoreLimitations && _storeService.GetAllStores().Count == 1)
+            {
+                model.Add(new SystemWarningModel()
+                {
+                    Level = SystemWarningLevel.Warning,
+                    Text = _localizationService.GetResource("Admin.System.Warnings.Performance.IgnoreStoreLimitations")
+                });
+            }
+            if (!_catalogSettings.IgnoreAcl)
+            {
+                model.Add(new SystemWarningModel()
+                {
+                    Level = SystemWarningLevel.Warning,
+                    Text = _localizationService.GetResource("Admin.System.Warnings.Performance.IgnoreAcl")
+                });
+            }
 
             //validate write permissions (the same procedure like during installation)
             var dirPermissionsOk = true;
@@ -332,7 +380,36 @@ namespace Nop.Admin.Controllers
                     Level = SystemWarningLevel.Pass,
                     Text = _localizationService.GetResource("Admin.System.Warnings.FilePermission.OK")
                 });
-            
+
+            //machine key
+            try
+            {
+                var machineKeySection = ConfigurationManager.GetSection("system.web/machineKey") as MachineKeySection;
+                var machineKeySpecified = machineKeySection != null &&
+                    !String.IsNullOrEmpty(machineKeySection.DecryptionKey) &&
+                    !machineKeySection.DecryptionKey.StartsWith("AutoGenerate",StringComparison.InvariantCultureIgnoreCase);
+
+                if (!machineKeySpecified)
+                {
+                    model.Add(new SystemWarningModel()
+                    {
+                        Level = SystemWarningLevel.Warning,
+                        Text = _localizationService.GetResource("Admin.System.Warnings.MachineKey.NotSpecified")
+                    });
+                }
+                else
+                {
+                    model.Add(new SystemWarningModel()
+                    {
+                        Level = SystemWarningLevel.Pass,
+                        Text = _localizationService.GetResource("Admin.System.Warnings.MachineKey.Specified")
+                    });
+                }
+            }
+            catch (Exception exc)
+            {
+                LogException(exc);
+            }
             
             return View(model);
         }
@@ -362,7 +439,7 @@ namespace Nop.Admin.Controllers
             DateTime? endDateValue = (model.DeleteGuests.EndDate == null) ? null
                             : (DateTime?)_dateTimeHelper.ConvertToUtcTime(model.DeleteGuests.EndDate.Value, _dateTimeHelper.CurrentTimeZone).AddDays(1);
 
-            model.DeleteGuests.NumberOfDeletedCustomers = _customerService.DeleteGuestCustomers(startDateValue, endDateValue, model.DeleteGuests.OnlyWithoutShoppingCart);
+            model.DeleteGuests.NumberOfDeletedCustomers = _customerService.DeleteGuestCustomers(startDateValue, endDateValue, model.DeleteGuests.OnlyWithoutShoppingCart, int.MaxValue);
 
             return View(model);
         }
@@ -436,14 +513,21 @@ namespace Nop.Admin.Controllers
                 .ToList();
             return PartialView(model);
         }
-        public ActionResult LanguageSelected(int customerlanguage)
+        public ActionResult SetLanguage(int langid, string returnUrl = "")
         {
-            var language = _languageService.GetLanguageById(customerlanguage);
+            var language = _languageService.GetLanguageById(langid);
             if (language != null)
             {
                 _workContext.WorkingLanguage = language;
             }
-            return Content("Changed");
+
+            //url referrer
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = _webHelper.GetUrlReferrer();
+            //home page
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = Url.Action("Index", "Home", new { area = "Admin" });
+            return Redirect(returnUrl);
         }
 
         public ActionResult ClearCache()
@@ -468,6 +552,7 @@ namespace Nop.Admin.Controllers
         }
 
         #region Searh engine friendly names
+
         public ActionResult SeNames()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMaintenance))
@@ -477,14 +562,14 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult SeNames(GridCommand command, UrlRecordListModel model)
+        [HttpPost]
+        public ActionResult SeNames(DataSourceRequest command, UrlRecordListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMaintenance))
                 return AccessDeniedView();
 
             var urlRecords = _urlRecordService.GetAllUrlRecords(model.SeName, command.Page - 1, command.PageSize);
-            var gridModel = new GridModel<UrlRecordModel>
+            var gridModel = new DataSourceResult
             {
                 Data = urlRecords.Select(x =>
                 {
@@ -510,10 +595,7 @@ namespace Nop.Admin.Controllers
                 }),
                 Total = urlRecords.TotalCount
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+            return Json(gridModel);
         }
 
         [HttpPost]
@@ -539,6 +621,37 @@ namespace Nop.Admin.Controllers
         }
 
         #endregion
+
+        [ChildActionOnly]
+        public ActionResult PopularSearchTermsReport()
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageProducts))
+                return Content("");
+
+            return PartialView();
+        }
+
+        [HttpPost]
+        public ActionResult PopularSearchTermsReport(DataSourceRequest command)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageProducts))
+                return AccessDeniedView();
+
+            var searchTermRecordLines = _searchTermService.GetStats(command.Page - 1, command.PageSize);
+            var gridModel = new DataSourceResult
+            {
+                Data = searchTermRecordLines.Select(x =>
+                {
+                    return new SearchTermReportLineModel()
+                    {
+                        Keyword = x.Keyword,
+                        Count = x.Count,
+                    };
+                }),
+                Total = searchTermRecordLines.TotalCount
+            };
+            return Json(gridModel);
+        }
 
         #endregion
     }

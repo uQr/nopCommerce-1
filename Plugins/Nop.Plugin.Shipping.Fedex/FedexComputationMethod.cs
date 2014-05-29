@@ -102,7 +102,7 @@ namespace Nop.Plugin.Shipping.Fedex
             decimal subTotalWithoutDiscountBase = decimal.Zero;
             decimal subTotalWithDiscountBase = decimal.Zero;
             _orderTotalCalculationService.GetShoppingCartSubTotal(getShippingOptionRequest.Items,
-                out orderSubTotalDiscountAmount, out orderSubTotalAppliedDiscount,
+                false, out orderSubTotalDiscountAmount, out orderSubTotalAppliedDiscount,
                 out subTotalWithoutDiscountBase, out subTotalWithDiscountBase);
             subTotalBase = subTotalWithDiscountBase;
 
@@ -171,7 +171,16 @@ namespace Nop.Plugin.Shipping.Fedex
             request.RequestedShipment.TotalInsuredValue = new Money();
             request.RequestedShipment.TotalInsuredValue.Amount = orderSubTotal;
             request.RequestedShipment.TotalInsuredValue.Currency = currencyCode;
-            request.RequestedShipment.ShipTimestamp = DateTime.Now; // Shipping date and time
+
+
+            //Saturday pickup is available for certain FedEx Express U.S. service types:
+            //http://www.fedex.com/us/developer/product/WebServices/MyWebHelp/Services/Options/c_SaturdayShipAndDeliveryServiceDetails.html
+            //If the customer orders on a Saturday, the rate calculation will use Saturday as the shipping date, and the rates will include a Saturday pickup surcharge
+            //More info: http://www.nopcommerce.com/boards/t/27348/fedex-rate-can-be-excessive-for-express-methods-if-calculated-on-a-saturday.aspx
+            var shipTimestamp = DateTime.Now;
+            if (shipTimestamp.DayOfWeek == DayOfWeek.Saturday)
+                shipTimestamp = shipTimestamp.AddDays(2);
+            request.RequestedShipment.ShipTimestamp = shipTimestamp; // Shipping date and time
             request.RequestedShipment.ShipTimestampSpecified = true;
             request.RequestedShipment.RateRequestTypes = new RateRequestType[2];
             request.RequestedShipment.RateRequestTypes[0] = RateRequestType.ACCOUNT;
@@ -198,7 +207,7 @@ namespace Nop.Plugin.Shipping.Fedex
                 request.RequestedShipment.Recipient.Address.Residential = true;
                 request.RequestedShipment.Recipient.Address.ResidentialSpecified = true;
             }
-            request.RequestedShipment.Recipient.Address.StreetLines = new string[1] { "Recipient Address Line 1" };
+            request.RequestedShipment.Recipient.Address.StreetLines = new string[1] { getShippingOptionRequest.ShippingAddress.Address1 };
             request.RequestedShipment.Recipient.Address.City = getShippingOptionRequest.ShippingAddress.City;
             if (getShippingOptionRequest.ShippingAddress.StateProvince != null &&
                 IncludeStateProvinceCode(getShippingOptionRequest.ShippingAddress.Country.TwoLetterIsoCode))
@@ -211,11 +220,6 @@ namespace Nop.Plugin.Shipping.Fedex
             }
             request.RequestedShipment.Recipient.Address.PostalCode = getShippingOptionRequest.ShippingAddress.ZipPostalCode;
             request.RequestedShipment.Recipient.Address.CountryCode = getShippingOptionRequest.ShippingAddress.Country.TwoLetterIsoCode;
-
-            Debug.WriteLine(String.Format("Destination: {0}, {1}  {2}",
-                request.RequestedShipment.Recipient.Address.StateOrProvinceCode,
-                request.RequestedShipment.Recipient.Address.PostalCode,
-                request.RequestedShipment.Recipient.Address.CountryCode));
         }
 
         private void SetOrigin(RateRequest request, GetShippingOptionRequest getShippingOptionRequest)
@@ -223,35 +227,18 @@ namespace Nop.Plugin.Shipping.Fedex
             request.RequestedShipment.Shipper = new Party();
             request.RequestedShipment.Shipper.Address = new RateServiceWebReference.Address();
 
-            // use request origin if present, else use settings
-            if (getShippingOptionRequest.CountryFrom != null)
-            {
-                request.RequestedShipment.Shipper.Address.StreetLines = new string[1] { "" };
-                request.RequestedShipment.Shipper.Address.City = "";
-                if (IncludeStateProvinceCode(getShippingOptionRequest.CountryFrom.TwoLetterIsoCode))
-                {
-                    string stateProvinceAbbreviation = getShippingOptionRequest.StateProvinceFrom == null ? "" : getShippingOptionRequest.StateProvinceFrom.Abbreviation;
-                    request.RequestedShipment.Shipper.Address.StateOrProvinceCode = stateProvinceAbbreviation;
-                }
-                request.RequestedShipment.Shipper.Address.PostalCode = getShippingOptionRequest.ZipPostalCodeFrom;
-                request.RequestedShipment.Shipper.Address.CountryCode = getShippingOptionRequest.CountryFrom.TwoLetterIsoCode;
-            }
-            else
-            {
-                request.RequestedShipment.Shipper.Address.StreetLines = new string[1] { _fedexSettings.Street };
-                request.RequestedShipment.Shipper.Address.City = _fedexSettings.City;
-                if (IncludeStateProvinceCode(_fedexSettings.CountryCode))
-                {
-                    request.RequestedShipment.Shipper.Address.StateOrProvinceCode = _fedexSettings.StateOrProvinceCode;
-                }
-                request.RequestedShipment.Shipper.Address.PostalCode = _fedexSettings.PostalCode;
-                request.RequestedShipment.Shipper.Address.CountryCode = _fedexSettings.CountryCode;
-            }
+            if (getShippingOptionRequest.CountryFrom == null)
+                throw new Exception("FROM country is not specified");
 
-            Debug.WriteLine(String.Format("Origin: {0}, {1}  {2}",
-                request.RequestedShipment.Shipper.Address.StateOrProvinceCode,
-                request.RequestedShipment.Shipper.Address.PostalCode,
-                request.RequestedShipment.Shipper.Address.CountryCode));
+            request.RequestedShipment.Shipper.Address.StreetLines = new string[1] { getShippingOptionRequest.AddressFrom };
+            request.RequestedShipment.Shipper.Address.City = getShippingOptionRequest.CityFrom;
+            if (IncludeStateProvinceCode(getShippingOptionRequest.CountryFrom.TwoLetterIsoCode))
+            {
+                string stateProvinceAbbreviation = getShippingOptionRequest.StateProvinceFrom == null ? "" : getShippingOptionRequest.StateProvinceFrom.Abbreviation;
+                request.RequestedShipment.Shipper.Address.StateOrProvinceCode = stateProvinceAbbreviation;
+            }
+            request.RequestedShipment.Shipper.Address.PostalCode = getShippingOptionRequest.ZipPostalCodeFrom;
+            request.RequestedShipment.Shipper.Address.CountryCode = getShippingOptionRequest.CountryFrom.TwoLetterIsoCode;
         }
 
         private bool IncludeStateProvinceCode(string countryCode)
@@ -266,10 +253,10 @@ namespace Nop.Plugin.Shipping.Fedex
 
             var usedMeasureWeight = GetUsedMeasureWeight();
             var usedMeasureDimension = GetUsedMeasureDimension();
-            int length = ConvertFromPrimaryMeasureDimension(getShippingOptionRequest.GetTotalLength(), usedMeasureDimension);
-            int height = ConvertFromPrimaryMeasureDimension(getShippingOptionRequest.GetTotalHeight(), usedMeasureDimension);
-            int width = ConvertFromPrimaryMeasureDimension(getShippingOptionRequest.GetTotalWidth(), usedMeasureDimension);
-            int weight = ConvertFromPrimaryMeasureWeight(_shippingService.GetShoppingCartTotalWeight(getShippingOptionRequest.Items), usedMeasureWeight);
+            int length = ConvertFromPrimaryMeasureDimension(_shippingService.GetTotalLength(getShippingOptionRequest.Items), usedMeasureDimension);
+            int height = ConvertFromPrimaryMeasureDimension(_shippingService.GetTotalHeight(getShippingOptionRequest.Items), usedMeasureDimension);
+            int width = ConvertFromPrimaryMeasureDimension(_shippingService.GetTotalWidth(getShippingOptionRequest.Items), usedMeasureDimension);
+            int weight = ConvertFromPrimaryMeasureWeight(_shippingService.GetTotalWeight(getShippingOptionRequest.Items), usedMeasureWeight);
             if (length < 1)
                 length = 1;
             if (height < 1)
@@ -370,10 +357,10 @@ namespace Nop.Plugin.Shipping.Fedex
             int i = 0;
             foreach (var sci in items)
             {
-                int length = ConvertFromPrimaryMeasureDimension(sci.ProductVariant.Length, usedMeasureDimension);
-                int height = ConvertFromPrimaryMeasureDimension(sci.ProductVariant.Height, usedMeasureDimension);
-                int width = ConvertFromPrimaryMeasureDimension(sci.ProductVariant.Width, usedMeasureDimension);
-                int weight = ConvertFromPrimaryMeasureWeight(sci.ProductVariant.Weight, usedMeasureWeight);
+                int length = ConvertFromPrimaryMeasureDimension(sci.Product.Length, usedMeasureDimension);
+                int height = ConvertFromPrimaryMeasureDimension(sci.Product.Height, usedMeasureDimension);
+                int width = ConvertFromPrimaryMeasureDimension(sci.Product.Width, usedMeasureDimension);
+                int weight = ConvertFromPrimaryMeasureWeight(sci.Product.Weight, usedMeasureWeight);
                 if (length < 1)
                     length = 1;
                 if (height < 1)
@@ -398,7 +385,7 @@ namespace Nop.Plugin.Shipping.Fedex
                     request.RequestedShipment.RequestedPackageLineItems[i].Dimensions.Units = RateServiceWebReference.LinearUnits.IN;
 
                     request.RequestedShipment.RequestedPackageLineItems[i].InsuredValue = new Money(); // insured value
-                    request.RequestedShipment.RequestedPackageLineItems[i].InsuredValue.Amount = sci.ProductVariant.Price;
+                    request.RequestedShipment.RequestedPackageLineItems[i].InsuredValue.Amount = sci.Product.Price;
                     request.RequestedShipment.RequestedPackageLineItems[i].InsuredValue.Currency = currencyCode;
 
                     i++;
@@ -455,21 +442,21 @@ namespace Nop.Plugin.Shipping.Fedex
             if (getShippingOptionRequest.Items.Count == 1 && getShippingOptionRequest.Items[0].Quantity == 1)
             {
                 totalPackagesDims = 1;
-                var pv = getShippingOptionRequest.Items[0].ProductVariant;
-                length = ConvertFromPrimaryMeasureDimension(pv.Length, usedMeasureDimension);
-                height = ConvertFromPrimaryMeasureDimension(pv.Height, usedMeasureDimension);
-                width = ConvertFromPrimaryMeasureDimension(pv.Width, usedMeasureDimension);
+                var product = getShippingOptionRequest.Items[0].Product;
+                length = ConvertFromPrimaryMeasureDimension(product.Length, usedMeasureDimension);
+                height = ConvertFromPrimaryMeasureDimension(product.Height, usedMeasureDimension);
+                width = ConvertFromPrimaryMeasureDimension(product.Width, usedMeasureDimension);
             }
             else
             {
                 decimal totalVolume = 0;
                 foreach (var item in getShippingOptionRequest.Items)
                 {
-                    var pv = item.ProductVariant;
-                    int pvLength = ConvertFromPrimaryMeasureDimension(pv.Length, usedMeasureDimension);
-                    int pvHeight = ConvertFromPrimaryMeasureDimension(pv.Height, usedMeasureDimension);
-                    int pvWidth = ConvertFromPrimaryMeasureDimension(pv.Width, usedMeasureDimension);
-                    totalVolume += item.Quantity * (pvHeight * pvWidth * pvLength);
+                    var product = item.Product;
+                    int productLength = ConvertFromPrimaryMeasureDimension(product.Length, usedMeasureDimension);
+                    int productHeight = ConvertFromPrimaryMeasureDimension(product.Height, usedMeasureDimension);
+                    int productWidth = ConvertFromPrimaryMeasureDimension(product.Width, usedMeasureDimension);
+                    totalVolume += item.Quantity * (productHeight * productWidth * productLength);
                 }
 
                 int dimension;
@@ -505,7 +492,7 @@ namespace Nop.Plugin.Shipping.Fedex
             if (width < 1)
                 width = 1;
 
-            int weight = ConvertFromPrimaryMeasureWeight(_shippingService.GetShoppingCartTotalWeight(getShippingOptionRequest.Items), usedMeasureWeight);
+            int weight = ConvertFromPrimaryMeasureWeight(_shippingService.GetTotalWeight(getShippingOptionRequest.Items), usedMeasureWeight);
             if (weight < 1)
                 weight = 1;
 
@@ -845,11 +832,6 @@ namespace Nop.Plugin.Shipping.Fedex
             {
                 Url = "https://gatewaybeta.fedex.com:443/web-services/rate",
                 DropoffType = Nop.Plugin.Shipping.Fedex.DropoffType.BusinessServiceCenter,
-                Street = "Sender Address Line 1",
-                City = "Memphis",
-                StateOrProvinceCode = "TN",
-                PostalCode = "38115",
-                CountryCode = "US",
                 PackingPackageVolume = 5184
             };
             _settingService.SaveSetting(settings);
@@ -873,16 +855,6 @@ namespace Nop.Plugin.Shipping.Fedex
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.AdditionalHandlingCharge.Hint", "Enter additional handling fee to charge your customers.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.CarrierServices", "Carrier Services Offered");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.CarrierServices.Hint", "Select the services you want to offer to customers.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.Street", "Shipping origin. Street");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.Street.Hint", "Specify origin street.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.City", "Shipping origin. City");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.City.Hint", "Specify origin city.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.StateOrProvinceCode", "Shipping origin. State code (2 characters)");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.StateOrProvinceCode.Hint", "Specify origin state code (2 characters).");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.PostalCode", "Shipping origin. Zip");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.PostalCode.Hint", "Specify origin zip code.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.CountryCode", "Shipping origin. Country code");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.CountryCode.Hint", "Specify origin country code.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.PassDimensions", "Pass dimensions");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.PassDimensions.Hint", "Check if you want to pass package dimensions when requesting rates.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.Fedex.Fields.PackingType", "Packing type");
@@ -930,16 +902,6 @@ namespace Nop.Plugin.Shipping.Fedex
             this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.AdditionalHandlingCharge.Hint");
             this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.CarrierServices");
             this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.CarrierServices.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.Street");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.Street.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.City");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.City.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.StateOrProvinceCode");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.StateOrProvinceCode.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.PostalCode");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.PostalCode.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.CountryCode");
-            this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.CountryCode.Hint");
             this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.PassDimensions");
             this.DeletePluginLocaleResource("Plugins.Shipping.Fedex.Fields.PassDimensions.Hint");
             this.DeletePluginLocaleResource("Enums.Nop.Plugin.Shipping.Fedex.PackingType.PackByDimensions");

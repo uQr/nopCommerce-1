@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Nop.Core.Domain.Catalog;
+using Nop.Services.Security;
+using Nop.Services.Stores;
 
 namespace Nop.Services.Catalog
 {
@@ -56,35 +58,129 @@ namespace Nop.Services.Catalog
             return null;
         }
 
-        public static string GetCategoryNameWithPrefix(this Category category, ICategoryService categoryService)
+        /// <summary>
+        /// Get formatted category breadcrumb 
+        /// Note: ACL and store mapping is ignored
+        /// </summary>
+        /// <param name="category">Category</param>
+        /// <param name="categoryService">Category service</param>
+        /// <param name="separator">Separator</param>
+        /// <returns>Formatted breadcrumb</returns>
+        public static string GetFormattedBreadCrumb(this Category category,
+            ICategoryService categoryService,
+            string separator = ">>")
         {
+            if (category == null)
+                throw new ArgumentNullException("category");
+
             string result = string.Empty;
 
-            while (category != null)
+            //used to prevent circular references
+            var alreadyProcessedCategoryIds = new List<int>() { };
+
+            while (category != null &&  //not null
+                !category.Deleted &&  //not deleted
+                !alreadyProcessedCategoryIds.Contains(category.Id)) //prevent circular references
             {
                 if (String.IsNullOrEmpty(result))
+                {
                     result = category.Name;
+                }
                 else
-                    result = "--" + result;
+                {
+                    result = string.Format("{0} {1} {2}", category.Name, separator, result);
+                }
+
+                alreadyProcessedCategoryIds.Add(category.Id);
+
                 category = categoryService.GetCategoryById(category.ParentCategoryId);
+
             }
             return result;
         }
 
-        public static string GetCategoryBreadCrumb(this Category category, ICategoryService categoryService)
+        /// <summary>
+        /// Get formatted category breadcrumb 
+        /// Note: ACL and store mapping is ignored
+        /// </summary>
+        /// <param name="category">Category</param>
+        /// <param name="allCategories">All categories</param>
+        /// <param name="separator">Separator</param>
+        /// <returns>Formatted breadcrumb</returns>
+        public static string GetFormattedBreadCrumb(this Category category,
+            IList<Category> allCategories,
+            string separator = ">>")
         {
+            if (category == null)
+                throw new ArgumentNullException("category");
+
+            if (allCategories == null)
+                throw new ArgumentNullException("category");
+
             string result = string.Empty;
 
-            while (category != null && !category.Deleted)
+            //used to prevent circular references 
+            var alreadyProcessedCategoryIds = new List<int>() {};
+
+            while (category != null && //not null 
+                   !category.Deleted && //not deleted 
+                   !alreadyProcessedCategoryIds.Contains(category.Id)) //prevent circular references 
             {
                 if (String.IsNullOrEmpty(result))
+                {
                     result = category.Name;
+                }
                 else
-                    result = category.Name + " >> " + result;
+                {
+                    result = string.Format("{0} {1} {2}", category.Name, separator, result);
+                }
+
+                alreadyProcessedCategoryIds.Add(category.Id);
+
+                category = (from c in allCategories
+                    where c.Id == category.ParentCategoryId
+                    select c).FirstOrDefault();
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Get category breadcrumb 
+        /// </summary>
+        /// <param name="category">Category</param>
+        /// <param name="categoryService">Category service</param>
+        /// <param name="aclService">ACL service</param>
+        /// <param name="storeMappingService">Store mapping service</param>
+        /// <param name="showHidden">A value indicating whether to load hidden records</param>
+        /// <returns>Category breadcrumb </returns>
+        public static IList<Category> GetCategoryBreadCrumb(this Category category,
+            ICategoryService categoryService,
+            IAclService aclService,
+            IStoreMappingService storeMappingService,
+            bool showHidden = false)
+        {
+            if (category == null)
+                throw new ArgumentNullException("category");
+
+            var result = new List<Category>();
+
+            //used to prevent circular references
+            var alreadyProcessedCategoryIds = new List<int>() { };
+
+            while (category != null && //not null
+                !category.Deleted && //not deleted
+                (showHidden || category.Published) && //published
+                (showHidden || aclService.Authorize(category)) && //ACL
+                (showHidden || storeMappingService.Authorize(category)) && //Store mapping
+                !alreadyProcessedCategoryIds.Contains(category.Id)) //prevent circular references
+            {
+                result.Add(category);
+
+                alreadyProcessedCategoryIds.Add(category.Id);
 
                 category = categoryService.GetCategoryById(category.ParentCategoryId);
-
             }
+            result.Reverse();
             return result;
         }
 

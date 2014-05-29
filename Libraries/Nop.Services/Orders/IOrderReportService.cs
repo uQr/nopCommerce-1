@@ -43,6 +43,8 @@ namespace Nop.Services.Orders
         /// </summary>
         /// <param name="storeId">Store identifier; 0 to load all records</param>
         /// <param name="vendorId">Vendor identifier; 0 to load all records</param>
+        /// <param name="categoryId">Category identifier; 0 to load all records</param>
+        /// <param name="manufacturerId">Manufacturer identifier; 0 to load all records</param>
         /// <param name="createdFromUtc">Order created date from (UTC); null to load all records</param>
         /// <param name="createdToUtc">Order created date to (UTC); null to load all records</param>
         /// <param name="os">Order status; null to load all records</param>
@@ -50,17 +52,18 @@ namespace Nop.Services.Orders
         /// <param name="ss">Shipping status; null to load all records</param>
         /// <param name="billingCountryId">Billing country identifier; 0 to load all records</param>
         /// <param name="orderBy">1 - order by quantity, 2 - order by total amount</param>
-        /// <param name="groupBy">1 - group by product variants, 2 - group by products</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
         /// <returns>Result</returns>
-        IPagedList<BestsellersReportLine> BestSellersReport(int storeId = 0, int vendorId = 0,
+        IPagedList<BestsellersReportLine> BestSellersReport(
+            int categoryId = 0, int manufacturerId = 0, 
+            int storeId = 0, int vendorId = 0,
             DateTime? createdFromUtc = null, DateTime? createdToUtc = null,
             OrderStatus? os = null, PaymentStatus? ps = null, ShippingStatus? ss = null,
             int billingCountryId = 0,
-            int orderBy = 1, int groupBy = 1,
-            int pageIndex = 0, int pageSize = 2147483647,
+            int orderBy = 1,
+            int pageIndex = 0, int pageSize = int.MaxValue,
             bool showHidden = false);
         
         /// <summary>
@@ -75,7 +78,7 @@ namespace Nop.Services.Orders
             int recordsToReturn = 5, bool showHidden = false);
 
         /// <summary>
-        /// Gets a list of product variants that were never sold
+        /// Gets a list of products that were never sold
         /// </summary>
         /// <param name="vendorId">Vendor identifier</param>
         /// <param name="createdFromUtc">Order created date from (UTC); null to load all records</param>
@@ -83,8 +86,8 @@ namespace Nop.Services.Orders
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <param name="showHidden">A value indicating whether to show hidden records</param>
-        /// <returns>Product variants</returns>
-        IPagedList<ProductVariant> ProductsNeverSold(int vendorId, 
+        /// <returns>Products</returns>
+        IPagedList<Product> ProductsNeverSold(int vendorId, 
             DateTime? createdFromUtc, DateTime? createdToUtc,
             int pageIndex, int pageSize, bool showHidden = false);
 

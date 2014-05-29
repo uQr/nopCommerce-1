@@ -22,22 +22,22 @@ namespace Nop.Services.Tests.Customers
     [TestFixture]
     public class CustomerRegistrationServiceTests : ServiceTest
     {
-        IRepository<Customer> _customerRepo;
-        IRepository<CustomerRole> _customerRoleRepo;
-        IRepository<GenericAttribute> _genericAttributeRepo;
-        IRepository<Order> _orderRepo;
-        IRepository<ForumPost> _forumPostRepo;
-        IRepository<ForumTopic> _forumTopicRepo;
-        IGenericAttributeService _genericAttributeService;
-        IEncryptionService _encryptionService;
-        ICustomerService _customerService;
-        ICustomerRegistrationService _customerRegistrationService;
-        ILocalizationService _localizationService;
-        CustomerSettings _customerSettings;
-        INewsLetterSubscriptionService _newsLetterSubscriptionService;
-        IEventPublisher _eventPublisher;
-        RewardPointsSettings _rewardPointsSettings;
-        SecuritySettings _securitySettings;
+        private IRepository<Customer> _customerRepo;
+        private IRepository<CustomerRole> _customerRoleRepo;
+        private IRepository<GenericAttribute> _genericAttributeRepo;
+        private IRepository<Order> _orderRepo;
+        private IRepository<ForumPost> _forumPostRepo;
+        private IRepository<ForumTopic> _forumTopicRepo;
+        private IGenericAttributeService _genericAttributeService;
+        private IEncryptionService _encryptionService;
+        private ICustomerService _customerService;
+        private ICustomerRegistrationService _customerRegistrationService;
+        private ILocalizationService _localizationService;
+        private CustomerSettings _customerSettings;
+        private INewsLetterSubscriptionService _newsLetterSubscriptionService;
+        private IEventPublisher _eventPublisher;
+        private RewardPointsSettings _rewardPointsSettings;
+        private SecuritySettings _securitySettings;
 
         [SetUp]
         public new void SetUp()
@@ -157,32 +157,32 @@ namespace Nop.Services.Tests.Customers
         [Test]
         public void Ensure_only_registered_customers_can_login()
         {
-            bool result = _customerRegistrationService.ValidateCustomer("registered@test.com", "password");
-            result.ShouldBeTrue();
+            var result = _customerRegistrationService.ValidateCustomer("registered@test.com", "password");
+            result.ShouldEqual(CustomerLoginResults.Successful);
 
             result = _customerRegistrationService.ValidateCustomer("notregistered@test.com", "password");
-            result.ShouldBeFalse();
+            result.ShouldEqual(CustomerLoginResults.NotRegistered);
         }
 
         [Test]
         public void Can_validate_a_hashed_password() 
         {
-            bool result = _customerRegistrationService.ValidateCustomer("a@b.com", "password");
-            result.ShouldBeTrue();
+            var result = _customerRegistrationService.ValidateCustomer("a@b.com", "password");
+            result.ShouldEqual(CustomerLoginResults.Successful);
         }
 
         [Test]
         public void Can_validate_a_clear_password() 
         {
-            bool result = _customerRegistrationService.ValidateCustomer("test@test.com", "password");
-            result.ShouldBeTrue();
+            var result = _customerRegistrationService.ValidateCustomer("test@test.com", "password");
+            result.ShouldEqual(CustomerLoginResults.Successful); ;
         }
 
         [Test]
         public void Can_validate_an_encrypted_password() 
         {
-            bool result = _customerRegistrationService.ValidateCustomer("user@test.com", "password");
-            result.ShouldBeTrue();
+            var result = _customerRegistrationService.ValidateCustomer("user@test.com", "password");
+            result.ShouldEqual(CustomerLoginResults.Successful);
         }
 
         //private CustomerRegistrationRequest CreateCustomerRegistrationRequest(Customer customer) 

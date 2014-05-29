@@ -13,17 +13,17 @@ namespace Nop.Services.Messages
 {
     public partial interface IMessageTokenProvider
     {
-        void AddStoreTokens(IList<Token> tokens, Store store);
+        void AddStoreTokens(IList<Token> tokens, Store store, EmailAccount emailAccount);
 
-        void AddOrderTokens(IList<Token> tokens, Order order, int languageId);
+        void AddOrderTokens(IList<Token> tokens, Order order, int languageId, int vendorId = 0);
 
         void AddShipmentTokens(IList<Token> tokens, Shipment shipment, int languageId);
 
         void AddOrderNoteTokens(IList<Token> tokens, OrderNote orderNote);
 
         void AddRecurringPaymentTokens(IList<Token> tokens, RecurringPayment recurringPayment);
-        
-        void AddReturnRequestTokens(IList<Token> tokens, ReturnRequest returnRequest, OrderProductVariant opv);
+
+        void AddReturnRequestTokens(IList<Token> tokens, ReturnRequest returnRequest, OrderItem orderItem);
 
         void AddGiftCardTokens(IList<Token> tokens, GiftCard giftCard);
 
@@ -37,9 +37,7 @@ namespace Nop.Services.Messages
 
         void AddNewsCommentTokens(IList<Token> tokens, NewsComment newsComment);
 
-        void AddProductTokens(IList<Token> tokens, Product product);
-
-        void AddProductVariantTokens(IList<Token> tokens, ProductVariant productVariant);
+        void AddProductTokens(IList<Token> tokens, Product product, int languageId);
 
         void AddForumTokens(IList<Token> tokens, Forum forum);
 

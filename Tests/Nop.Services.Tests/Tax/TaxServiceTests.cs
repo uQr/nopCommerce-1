@@ -4,7 +4,6 @@ using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Tax;
-using Nop.Core.Infrastructure;
 using Nop.Core.Plugins;
 using Nop.Services.Common;
 using Nop.Services.Events;
@@ -18,11 +17,11 @@ namespace Nop.Services.Tests.Tax
     [TestFixture]
     public class TaxServiceTests : ServiceTest
     {
-        IAddressService _addressService;
-        IWorkContext _workContext;
-        TaxSettings _taxSettings;
-        IEventPublisher _eventPublisher;
-        ITaxService _taxService;
+        private IAddressService _addressService;
+        private IWorkContext _workContext;
+        private TaxSettings _taxSettings;
+        private IEventPublisher _eventPublisher;
+        private ITaxService _taxService;
 
         [SetUp]
         public new void SetUp()
@@ -67,13 +66,13 @@ namespace Nop.Services.Tests.Tax
         }
 
         [Test]
-        public void Can_check_taxExempt_productVariant()
+        public void Can_check_taxExempt_product()
         {
-            var productVariant = new ProductVariant();
-            productVariant.IsTaxExempt = true;
-            _taxService.IsTaxExempt(productVariant, null).ShouldEqual(true);
-            productVariant.IsTaxExempt = false;
-            _taxService.IsTaxExempt(productVariant, null).ShouldEqual(false);
+            var product = new Product();
+            product.IsTaxExempt = true;
+            _taxService.IsTaxExempt(product, null).ShouldEqual(true);
+            product.IsTaxExempt = false;
+            _taxService.IsTaxExempt(product, null).ShouldEqual(false);
         }
 
         [Test]
@@ -110,35 +109,51 @@ namespace Nop.Services.Tests.Tax
 
         protected decimal GetFixedTestTaxRate()
         {
-            //10 is a fixed tax rate returned from FixedRateTestTaxProvider. Perhaps, it should be configured in some other way 
+            //10 is a fixed tax rate returned from FixedRateTestTaxProvider. Perhaps, it should be configured some other way 
             return 10;
         }
 
+        //[Test]
+        //public void Can_get_tax_rate_for_productVariant()
+        //{
+        //    _taxSettings.TaxBasedOn = TaxBasedOn.BillingAddress;
+
+        //    var customer = new Customer();
+        //    customer.BillingAddress = new Address();
+        //    var productVariant = new ProductVariant();
+
+        //    _taxService.GetTaxRate(productVariant, customer).ShouldEqual(GetFixedTestTaxRate());
+        //    productVariant.IsTaxExempt = true;
+        //    _taxService.GetTaxRate(productVariant, customer).ShouldEqual(0);
+        //}
+
         [Test]
-        public void Can_get_tax_rate_for_productVariant()
+        public void Can_get_productPrice_priceIncludesTax_includingTax_taxable()
         {
-            _taxSettings.TaxBasedOn = TaxBasedOn.BillingAddress;
-
             var customer = new Customer();
-            customer.BillingAddress = new Address();
-            var productVariant = new ProductVariant();
+            var product = new Product();
 
-            _taxService.GetTaxRate(productVariant, customer).ShouldEqual(GetFixedTestTaxRate());
-            productVariant.IsTaxExempt = true;
-            _taxService.GetTaxRate(productVariant, customer).ShouldEqual(0);
+            decimal taxRate;
+            _taxService.GetProductPrice(product, 0, 1000M, true, customer, true, out taxRate).ShouldEqual(1000);
+            _taxService.GetProductPrice(product, 0, 1000M, true, customer, false, out taxRate).ShouldEqual(1100);
+            _taxService.GetProductPrice(product, 0, 1000M, false, customer, true, out taxRate).ShouldEqual(909.0909090909090909090909091M);
+            _taxService.GetProductPrice(product, 0, 1000M, false, customer, false, out taxRate).ShouldEqual(1000);
         }
 
         [Test]
-        public void Can_get_productPrice_priceIncludesTax_includingTax()
+        public void Can_get_productPrice_priceIncludesTax_includingTax_non_taxable()
         {
             var customer = new Customer();
-            var productVariant = new ProductVariant();
+            var product = new Product();
+
+            //not taxable
+            customer.IsTaxExempt = true;
 
             decimal taxRate;
-            _taxService.GetProductPrice(productVariant, 0, 1000M, true, customer, true, out taxRate).ShouldEqual(1000);
-            _taxService.GetProductPrice(productVariant, 0, 1000M, true, customer, false, out taxRate).ShouldEqual(1100);
-            _taxService.GetProductPrice(productVariant, 0, 1000M, false, customer, true, out taxRate).ShouldEqual(909.0909090909090909090909091M);
-            _taxService.GetProductPrice(productVariant, 0, 1000M, false, customer, false, out taxRate).ShouldEqual(1000);
+            _taxService.GetProductPrice(product, 0, 1000M, true, customer, true, out taxRate).ShouldEqual(909.0909090909090909090909091M);
+            _taxService.GetProductPrice(product, 0, 1000M, true, customer, false, out taxRate).ShouldEqual(1000);
+            _taxService.GetProductPrice(product, 0, 1000M, false, customer, true, out taxRate).ShouldEqual(909.0909090909090909090909091M);
+            _taxService.GetProductPrice(product, 0, 1000M, false, customer, false, out taxRate).ShouldEqual(1000);
         }
 
         [Test]
@@ -158,6 +173,17 @@ namespace Nop.Services.Tests.Tax
                 out name, out address, out exception);
             vatNumberStatus2.ShouldEqual(VatNumberStatus.Invalid);
             exception.ShouldBeNull();
+        }
+
+        [Test]
+        public void Should_assume_valid_VAT_number_if_EuVatAssumeValid_setting_is_true()
+        {
+            _taxSettings.EuVatAssumeValid = true;
+            string name, address;
+
+            VatNumberStatus vatNumberStatus = _taxService.GetVatNumberStatus("GB", "000 0000 00",
+                out name, out address);
+            vatNumberStatus.ShouldEqual(VatNumberStatus.Valid);
         }
     }
 }

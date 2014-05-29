@@ -3,6 +3,7 @@ using System.Web.Routing;
 using Nop.Core;
 using Nop.Core.Data;
 using Nop.Core.Infrastructure;
+using Nop.Services.Events;
 using Nop.Services.Seo;
 using Nop.Web.Framework.Localization;
 
@@ -11,7 +12,7 @@ namespace Nop.Web.Framework.Seo
     /// <summary>
     /// Provides properties and methods for defining a SEO friendly route, and for getting information about the route.
     /// </summary>
-    public class GenericPathRoute : LocalizedRoute
+    public partial class GenericPathRoute : LocalizedRoute
     {
         #region Constructors
 
@@ -154,6 +155,14 @@ namespace Nop.Web.Framework.Seo
                             data.Values["SeName"] = urlRecord.Slug;
                         }
                         break;
+                    case "vendor":
+                        {
+                            data.Values["controller"] = "Catalog";
+                            data.Values["action"] = "Vendor";
+                            data.Values["vendorid"] = urlRecord.EntityId;
+                            data.Values["SeName"] = urlRecord.Slug;
+                        }
+                        break;
                     case "newsitem":
                         {
                             data.Values["controller"] = "News";
@@ -170,11 +179,23 @@ namespace Nop.Web.Framework.Seo
                             data.Values["SeName"] = urlRecord.Slug;
                         }
                         break;
+                    case "topic":
+                        {
+                            data.Values["controller"] = "Topic";
+                            data.Values["action"] = "TopicDetails";
+                            data.Values["topicId"] = urlRecord.EntityId;
+                            data.Values["SeName"] = urlRecord.Slug;
+                        }
+                        break;
                     default:
                         {
                             //no record found
-                            throw new NopException(string.Format("Not supported EntityName for UrlRecord: {0}", urlRecord.EntityName));
+
+                            //generate an event this way developers could insert their own types
+                            EngineContext.Current.Resolve<IEventPublisher>()
+                                .Publish(new CustomUrlRecordEntityNameRequested(data, urlRecord));
                         }
+                        break;
                 }
             }
             return data;

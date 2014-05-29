@@ -10,12 +10,12 @@
             @T("ShoppingCart.DiscountCouponCode.Tooltip")
         </div>
         <div class="coupon-code">
-            <input name="discountcouponcode" type="text" class="discount-coupon-code" />&nbsp;
+            <input name="discountcouponcode" type="text" class="discount-coupon-code" />
             <input type="submit" name="applydiscountcouponcode" value="@T("ShoppingCart.DiscountCouponCode.Button")" class="button-2 apply-discount-coupon-code-button" />
         </div>
         @if (!String.IsNullOrEmpty(Model.Message))
         {
-            <div class="message-error">
+            <div class="message">
                 @Model.Message
             </div>
         }

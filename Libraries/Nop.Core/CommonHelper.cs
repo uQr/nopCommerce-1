@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Configuration;
 using System.Globalization;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Web;
 using Nop.Core.ComponentModel;
 using Nop.Core.Domain.Shipping;
@@ -70,7 +70,7 @@ namespace Nop.Core
         /// <param name="min">Minimum number</param>
         /// <param name="max">Maximum number</param>
         /// <returns>Result</returns>
-        public static int GenerateRandomInteger(int min = 0, int max = 2147483647)
+        public static int GenerateRandomInteger(int min = 0, int max = int.MaxValue)
         {
             var randomNumberBuffer = new byte[10];
             new RNGCryptoServiceProvider().GetBytes(randomNumberBuffer);
@@ -215,41 +215,6 @@ namespace Nop.Core
             //TypeDescriptor.AddAttributes(typeof(List<int>), new TypeConverterAttribute(typeof(GenericListTypeConverter<int>)));
             //so we do it manually here
 
-            #region Old code (doesn't work in meidum trust)
-
-            //            namespace Nop.Core
-            //{
-            //    public class TypeDescriptorRegistrationStartUpTask : IStartupTask
-            //    {
-            //        public void Execute()
-            //        {
-            //            //List<int>
-            //            TypeDescriptor.AddAttributes(typeof(List<int>), 
-            //                new TypeConverterAttribute(typeof(GenericListTypeConverter<int>)));
-
-            //            //List<decimal>
-            //            TypeDescriptor.AddAttributes(typeof(List<decimal>),
-            //                new TypeConverterAttribute(typeof(GenericListTypeConverter<decimal>)));
-
-            //            //List<string>
-            //            TypeDescriptor.AddAttributes(typeof(List<string>),
-            //                new TypeConverterAttribute(typeof(GenericListTypeConverter<string>)));
-
-            //            //ShippingOption
-            //            TypeDescriptor.AddAttributes(typeof(ShippingOption),
-            //                new TypeConverterAttribute(typeof(ShippingOptionTypeConverter)));
-            //        }
-
-            //        public int Order
-            //        {
-            //            get { return 1; }
-            //        }
-            //    }
-            //}
-
-
-            #endregion
-
             if (type == typeof(List<int>))
                 return new GenericListTypeConverter<int>();
             if (type == typeof(List<decimal>))
@@ -331,14 +296,17 @@ namespace Nop.Core
             return result;
         }
 
-        public static bool OneToManyCollectionWrapperEnabled
+        /// <summary>
+        /// Set Telerik (Kendo UI) culture
+        /// </summary>
+        public static void SetTelerikCulture()
         {
-            get
-            {
-                bool enabled = !String.IsNullOrEmpty(ConfigurationManager.AppSettings["OneToManyCollectionWrapperEnabled"]) &&
-                   Convert.ToBoolean(ConfigurationManager.AppSettings["OneToManyCollectionWrapperEnabled"]);
-                return enabled;
-            }
+            //little hack here
+            //always set culture to 'en-US' (Kendo UI has a bug related to editing decimal values in other cultures). Like currently it's done for admin area in Global.asax.cs
+            
+            var culture = new CultureInfo("en-US");
+            Thread.CurrentThread.CurrentCulture = culture;
+            Thread.CurrentThread.CurrentUICulture = culture;
         }
     }
 }

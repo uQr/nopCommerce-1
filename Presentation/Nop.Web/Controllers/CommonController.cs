@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Web;
@@ -41,7 +42,7 @@ using Nop.Web.Models.Topics;
 
 namespace Nop.Web.Controllers
 {
-    public partial class CommonController : BaseNopController
+    public partial class CommonController : BasePublicController
     {
         #region Fields
 
@@ -84,23 +85,39 @@ namespace Nop.Web.Controllers
 
         #region Constructors
 
-        public CommonController(ICategoryService categoryService, IProductService productService,
-            IManufacturerService manufacturerService, ITopicService topicService,
+        public CommonController(ICategoryService categoryService,
+            IProductService productService,
+            IManufacturerService manufacturerService,
+            ITopicService topicService,
             ILanguageService languageService,
-            ICurrencyService currencyService, ILocalizationService localizationService,
-            IWorkContext workContext, IStoreContext storeContext,
-            IQueuedEmailService queuedEmailService, IEmailAccountService emailAccountService,
-            ISitemapGenerator sitemapGenerator, IThemeContext themeContext,
-            IThemeProvider themeProvider, IForumService forumService,
-            IGenericAttributeService genericAttributeService, IWebHelper webHelper,
-            IPermissionService permissionService, IMobileDeviceHelper mobileDeviceHelper,
-            HttpContextBase httpContext, ICacheManager cacheManager,
-            ICustomerActivityService customerActivityService, CustomerSettings customerSettings, 
-            TaxSettings taxSettings, CatalogSettings catalogSettings,
-            StoreInformationSettings storeInformationSettings, EmailAccountSettings emailAccountSettings,
-            CommonSettings commonSettings, BlogSettings blogSettings, 
-            NewsSettings newsSettings, ForumSettings forumSettings,
-            LocalizationSettings localizationSettings, CaptchaSettings captchaSettings)
+            ICurrencyService currencyService,
+            ILocalizationService localizationService,
+            IWorkContext workContext, 
+            IStoreContext storeContext,
+            IQueuedEmailService queuedEmailService, 
+            IEmailAccountService emailAccountService,
+            ISitemapGenerator sitemapGenerator,
+            IThemeContext themeContext,
+            IThemeProvider themeProvider,
+            IForumService forumService,
+            IGenericAttributeService genericAttributeService, 
+            IWebHelper webHelper,
+            IPermissionService permissionService,
+            IMobileDeviceHelper mobileDeviceHelper,
+            HttpContextBase httpContext, 
+            ICacheManager cacheManager,
+            ICustomerActivityService customerActivityService,
+            CustomerSettings customerSettings, 
+            TaxSettings taxSettings, 
+            CatalogSettings catalogSettings,
+            StoreInformationSettings storeInformationSettings,
+            EmailAccountSettings emailAccountSettings,
+            CommonSettings commonSettings, 
+            BlogSettings blogSettings, 
+            NewsSettings newsSettings,
+            ForumSettings forumSettings,
+            LocalizationSettings localizationSettings, 
+            CaptchaSettings captchaSettings)
         {
             this._categoryService = categoryService;
             this._productService = productService;
@@ -142,15 +159,6 @@ namespace Nop.Web.Controllers
 
         #region Utilities
 
-        //page not found
-        public ActionResult PageNotFound()
-        {
-            this.Response.StatusCode = 404;
-            this.Response.TrySkipIisCustomErrors = true;
-
-            return View();
-        }
-
         [NonAction]
         protected LanguageSelectorModel PrepareLanguageSelectorModel()
         {
@@ -184,11 +192,23 @@ namespace Nop.Web.Controllers
             {
                 var result = _currencyService
                     .GetAllCurrencies(storeId: _storeContext.CurrentStore.Id)
-                    .Select(x => new CurrencyModel()
-                    {
-                        Id = x.Id,
-                        Name = x.GetLocalized(y => y.Name),
-                    })
+                    .Select(x =>
+                                {
+                                    //currency char
+                                    var currencySymbol = "";
+                                    if (!string.IsNullOrEmpty(x.DisplayLocale))
+                                        currencySymbol = new RegionInfo(x.DisplayLocale).CurrencySymbol;
+                                    else
+                                        currencySymbol = x.CurrencyCode;
+                                    //model
+                                    var currencyModel = new CurrencyModel()
+                                    {
+                                        Id = x.Id,
+                                        Name = x.GetLocalized(y => y.Name),
+                                        CurrencySymbol = currencySymbol
+                                    };
+                                    return currencyModel;
+                                })
                     .ToList();
                 return result;
             });
@@ -235,6 +255,15 @@ namespace Nop.Web.Controllers
 
         #region Methods
 
+        //page not found
+        public ActionResult PageNotFound()
+        {
+            this.Response.StatusCode = 404;
+            this.Response.TrySkipIisCustomErrors = true;
+
+            return View();
+        }
+
         //language
         [ChildActionOnly]
         public ActionResult LanguageSelector()
@@ -276,7 +305,7 @@ namespace Nop.Web.Controllers
             var model = PrepareCurrencySelectorModel();
             return PartialView(model);
         }
-        public ActionResult CurrencySelected(int customerCurrency, string returnUrl = "")
+        public ActionResult SetCurrency(int customerCurrency, string returnUrl = "")
         {
             var currency = _currencyService.GetCurrencyById(customerCurrency);
             if (currency != null)
@@ -298,7 +327,7 @@ namespace Nop.Web.Controllers
             var model = PrepareTaxTypeSelectorModel();
             return PartialView(model);
         }
-        public ActionResult TaxTypeSelected(int customerTaxType, string returnUrl = "")
+        public ActionResult SetTaxType(int customerTaxType, string returnUrl = "")
         {
             var taxDisplayType = (TaxDisplayType)Enum.ToObject(typeof(TaxDisplayType), customerTaxType);
             _workContext.TaxDisplayType = taxDisplayType;
@@ -408,46 +437,28 @@ namespace Nop.Web.Controllers
         {
             var model = new FooterModel()
             {
-                StoreName = _storeContext.CurrentStore.Name
-            };
-
-            return PartialView(model);
-        }
-
-        //menu
-        [ChildActionOnly]
-        public ActionResult Menu()
-        {
-            var model = new MenuModel()
-            {
-                RecentlyAddedProductsEnabled = _catalogSettings.RecentlyAddedProductsEnabled,
-                BlogEnabled = _blogSettings.Enabled,
-                ForumEnabled = _forumSettings.ForumsEnabled
-            };
-
-            return PartialView(model);
-        }
-
-        //info block
-        [ChildActionOnly]
-        public ActionResult InfoBlock()
-        {
-            var customer = _workContext.CurrentCustomer;
-
-            var model = new InfoBlockModel()
-            {
-                RecentlyAddedProductsEnabled = _catalogSettings.RecentlyAddedProductsEnabled,
-                RecentlyViewedProductsEnabled = _catalogSettings.RecentlyViewedProductsEnabled,
-                CompareProductsEnabled = _catalogSettings.CompareProductsEnabled,
-                BlogEnabled = _blogSettings.Enabled,
-                NewsEnabled = _newsSettings.Enabled,
+                StoreName = _storeContext.CurrentStore.GetLocalized(x => x.Name),
+                WishlistEnabled = _permissionService.Authorize(StandardPermissionProvider.EnableWishlist),
+                ShoppingCartEnabled = _permissionService.Authorize(StandardPermissionProvider.EnableShoppingCart),
                 SitemapEnabled = _commonSettings.SitemapEnabled,
+                WorkingLanguageId = _workContext.WorkingLanguage.Id,
+                FacebookLink = _storeInformationSettings.FacebookLink,
+                TwitterLink = _storeInformationSettings.TwitterLink,
+                YoutubeLink = _storeInformationSettings.YoutubeLink,
+                GooglePlusLink = _storeInformationSettings.GooglePlusLink,
+                BlogEnabled = _blogSettings.Enabled,
+                CompareProductsEnabled = _catalogSettings.CompareProductsEnabled,
                 ForumEnabled = _forumSettings.ForumsEnabled,
-                AllowPrivateMessages = customer.IsRegistered() && _forumSettings.AllowPrivateMessages,
+                AllowPrivateMessages = _workContext.CurrentCustomer.IsRegistered() && _forumSettings.AllowPrivateMessages,
+                NewsEnabled = _newsSettings.Enabled,
+                RecentlyViewedProductsEnabled = _catalogSettings.RecentlyViewedProductsEnabled,
+                RecentlyAddedProductsEnabled = _catalogSettings.RecentlyAddedProductsEnabled,
+                DisplayTaxShippingInfoFooter = _catalogSettings.DisplayTaxShippingInfoFooter
             };
 
             return PartialView(model);
         }
+
 
         //contact us page
         [NopHttpsRequirement(SslRequirement.No)]
@@ -533,46 +544,56 @@ namespace Nop.Web.Controllers
             if (!_commonSettings.SitemapEnabled)
                 return RedirectToRoute("HomePage");
 
-            var model = new SitemapModel();
-            if (_commonSettings.SitemapIncludeCategories)
+            var customerRolesIds = _workContext.CurrentCustomer.CustomerRoles
+               .Where(cr => cr.Active).Select(cr => cr.Id).ToList();
+            string cacheKey = string.Format(ModelCacheEventConsumer.SITEMAP_PAGE_MODEL_KEY, _workContext.WorkingLanguage.Id, string.Join(",", customerRolesIds), _storeContext.CurrentStore.Id);
+            var cachedModel = _cacheManager.Get(cacheKey, () =>
             {
-                var categories = _categoryService.GetAllCategories();
-                model.Categories = categories.Select(x => x.ToModel()).ToList();
-            }
-            if (_commonSettings.SitemapIncludeManufacturers)
-            {
-                var manufacturers = _manufacturerService.GetAllManufacturers();
-                model.Manufacturers = manufacturers.Select(x => x.ToModel()).ToList();
-            }
-            if (_commonSettings.SitemapIncludeProducts)
-            {
-                //limit product to 200 until paging is supported on this page
-                var products = _productService.SearchProducts(storeId: _storeContext.CurrentStore.Id, pageSize: 200);
-                model.Products = products.Select(product => new ProductOverviewModel()
+                var model = new SitemapModel();
+                if (_commonSettings.SitemapIncludeCategories)
                 {
-                    Id = product.Id,
-                    Name = product.GetLocalized(x => x.Name),
-                    ShortDescription = product.GetLocalized(x => x.ShortDescription),
-                    FullDescription = product.GetLocalized(x => x.FullDescription),
-                    SeName = product.GetSeName(),
-                }).ToList();
-            }
-            if (_commonSettings.SitemapIncludeTopics)
-            {
-                var topics = _topicService.GetAllTopics(_storeContext.CurrentStore.Id)
-                    .ToList()
-                    .FindAll(t => t.IncludeInSitemap);
-                model.Topics = topics.Select(topic => new TopicModel()
+                    var categories = _categoryService.GetAllCategories();
+                    model.Categories = categories.Select(x => x.ToModel()).ToList();
+                }
+                if (_commonSettings.SitemapIncludeManufacturers)
                 {
-                    Id = topic.Id,
-                    SystemName = topic.SystemName,
-                    IncludeInSitemap = topic.IncludeInSitemap,
-                    IsPasswordProtected = topic.IsPasswordProtected,
-                    Title = topic.GetLocalized(x => x.Title),
-                })
-                .ToList();
-            }
-            return View(model);
+                    var manufacturers = _manufacturerService.GetAllManufacturers();
+                    model.Manufacturers = manufacturers.Select(x => x.ToModel()).ToList();
+                }
+                if (_commonSettings.SitemapIncludeProducts)
+                {
+                    //limit product to 200 until paging is supported on this page
+                    var products = _productService.SearchProducts(storeId: _storeContext.CurrentStore.Id,
+                        visibleIndividuallyOnly: true,
+                        pageSize: 200);
+                    model.Products = products.Select(product => new ProductOverviewModel()
+                    {
+                        Id = product.Id,
+                        Name = product.GetLocalized(x => x.Name),
+                        ShortDescription = product.GetLocalized(x => x.ShortDescription),
+                        FullDescription = product.GetLocalized(x => x.FullDescription),
+                        SeName = product.GetSeName(),
+                    }).ToList();
+                }
+                if (_commonSettings.SitemapIncludeTopics)
+                {
+                    var topics = _topicService.GetAllTopics(_storeContext.CurrentStore.Id)
+                        .ToList()
+                        .FindAll(t => t.IncludeInSitemap);
+                    model.Topics = topics.Select(topic => new TopicModel()
+                    {
+                        Id = topic.Id,
+                        SystemName = topic.SystemName,
+                        IncludeInSitemap = topic.IncludeInSitemap,
+                        IsPasswordProtected = topic.IsPasswordProtected,
+                        Title = topic.GetLocalized(x => x.Title),
+                    })
+                    .ToList();
+                }
+                return model;
+            });
+
+            return View(cachedModel);
         }
 
         //SEO sitemap page
@@ -582,7 +603,13 @@ namespace Nop.Web.Controllers
             if (!_commonSettings.SitemapEnabled)
                 return RedirectToRoute("HomePage");
 
-            string siteMap = _sitemapGenerator.Generate();
+             var customerRolesIds = _workContext.CurrentCustomer.CustomerRoles
+               .Where(cr => cr.Active).Select(cr => cr.Id).ToList();
+            string cacheKey = string.Format(ModelCacheEventConsumer.SITEMAP_SEO_MODEL_KEY, _workContext.WorkingLanguage.Id, string.Join(",", customerRolesIds), _storeContext.CurrentStore.Id);
+            var siteMap = _cacheManager.Get(cacheKey, () =>
+            {
+                return _sitemapGenerator.Generate(this.Url);
+            });
             return Content(siteMap, "text/xml");
         }
 
@@ -614,42 +641,41 @@ namespace Nop.Web.Controllers
                 .ToList();
             return PartialView(model);
         }
-        public ActionResult StoreThemeSelected(string themeName)
+        public ActionResult SetStoreTheme(string themeName, string returnUrl = "")
         {
             _themeContext.WorkingDesktopTheme = themeName;
             
-            var model = new StoreThemeSelectorModel();
-            var currentTheme = _themeProvider.GetThemeConfiguration(_themeContext.WorkingDesktopTheme);
-            model.CurrentStoreTheme = new StoreThemeModel()
-            {
-                Name = currentTheme.ThemeName,
-                Title = currentTheme.ThemeTitle
-            };
-            model.AvailableStoreThemes = _themeProvider.GetThemeConfigurations()
-                //do not display themes for mobile devices
-                .Where(x => !x.MobileTheme)
-                .Select(x =>
-                {
-                    return new StoreThemeModel()
-                    {
-                        Name = x.ThemeName,
-                        Title = x.ThemeTitle
-                    };
-                })
-                .ToList();
-            return PartialView("StoreThemeSelector", model);
+            //url referrer
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = _webHelper.GetUrlReferrer();
+            //home page
+            if (String.IsNullOrEmpty(returnUrl))
+                returnUrl = Url.RouteUrl("HomePage");
+            return Redirect(returnUrl);
         }
 
         //favicon
         [ChildActionOnly]
         public ActionResult Favicon()
         {
+            //try loading a store specific favicon
+            var faviconFileName = string.Format("favicon-{0}.ico", _storeContext.CurrentStore.Id);
+            var localFaviconPath = System.IO.Path.Combine(Request.PhysicalApplicationPath, faviconFileName);
+            if (!System.IO.File.Exists(localFaviconPath))
+            {
+                //try loading a generic favicon
+                faviconFileName = "favicon.ico";
+                localFaviconPath = System.IO.Path.Combine(Request.PhysicalApplicationPath, faviconFileName);
+                if (!System.IO.File.Exists(localFaviconPath))
+                {
+                    return Content("");
+                }
+            }
+
             var model = new FaviconModel()
             {
-                Uploaded = System.IO.File.Exists(System.IO.Path.Combine(Request.PhysicalApplicationPath, "favicon.ico")),
-                FaviconUrl = _webHelper.GetStoreLocation() + "favicon.ico"
+                FaviconUrl = _webHelper.GetStoreLocation() + faviconFileName
             };
-            
             return PartialView(model);
         }
 
@@ -690,6 +716,10 @@ namespace Nop.Web.Controllers
                 //disabled
                 return Content("");
 
+            //ignore search engines because some pages could be indexed with the EU cookie as description
+            if (_workContext.CurrentCustomer.IsSearchEngineAccount())
+                return Content("");
+
             if (_workContext.CurrentCustomer.GetAttribute<bool>("EuCookieLaw.Accepted", _storeContext.CurrentStore.Id))
                 //already accepted
                 return Content("");
@@ -721,8 +751,8 @@ namespace Nop.Web.Controllers
                                     };
             var localizableDisallowPaths = new List<string>()
                                                {
-                                                   "/addproducttocart",
-                                                   "/addproductvarianttocart",
+                                                   "/addproducttocart/catalog/",
+                                                   "/addproducttocart/details/",
                                                    "/boards/forumwatch",
                                                    "/boards/postedit",
                                                    "/boards/postdelete",
@@ -767,10 +797,12 @@ namespace Nop.Web.Controllers
                                                    "/returnrequest",
                                                    "/sendpm",
                                                    "/sentupdate",
+                                                   "/shoppingcart/productdetails_attributechange",
                                                    "/subscribenewsletter",
                                                    "/topic/authenticate",
                                                    "/viewpm",
                                                    "/uploadfileproductattribute",
+                                                   "/uploadfilecheckoutattribute",
                                                    "/wishlist",
                                                };
 

@@ -3,14 +3,12 @@ using System.ComponentModel.DataAnnotations;
 using System.Web.Mvc;
 using FluentValidation.Attributes;
 using Nop.Admin.Models.Customers;
+using Nop.Admin.Models.Discounts;
 using Nop.Admin.Models.Stores;
 using Nop.Admin.Validators.Catalog;
-using Nop.Core.Domain.Discounts;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Localization;
 using Nop.Web.Framework.Mvc;
-using Telerik.Web.Mvc;
-using Telerik.Web.Mvc.UI;
 
 namespace Nop.Admin.Models.Catalog
 {
@@ -25,6 +23,7 @@ namespace Nop.Admin.Models.Catalog
             }
             Locales = new List<CategoryLocalizedModel>();
             AvailableCategoryTemplates = new List<SelectListItem>();
+            AvailableCategories = new List<SelectListItem>();
         }
 
         [NopResourceDisplayName("Admin.Catalog.Categories.Fields.Name")]
@@ -79,6 +78,9 @@ namespace Nop.Admin.Models.Catalog
         [NopResourceDisplayName("Admin.Catalog.Categories.Fields.ShowOnHomePage")]
         public bool ShowOnHomePage { get; set; }
 
+        [NopResourceDisplayName("Admin.Catalog.Categories.Fields.IncludeInTopMenu")]
+        public bool IncludeInTopMenu { get; set; }
+
         [NopResourceDisplayName("Admin.Catalog.Categories.Fields.Published")]
         public bool Published { get; set; }
 
@@ -107,11 +109,11 @@ namespace Nop.Admin.Models.Catalog
         public int[] SelectedStoreIds { get; set; }
 
 
-        public IList<DropDownItem> ParentCategories { get; set; }
+        public IList<SelectListItem> AvailableCategories { get; set; }
 
 
         //discounts
-        public List<Discount> AvailableDiscounts { get; set; }
+        public List<DiscountModel> AvailableDiscounts { get; set; }
         public int[] SelectedDiscountIds { get; set; }
 
 
@@ -144,8 +146,8 @@ namespace Nop.Admin.Models.Catalog
                 AvailableManufacturers = new List<SelectListItem>();
                 AvailableStores = new List<SelectListItem>();
                 AvailableVendors = new List<SelectListItem>();
+                AvailableProductTypes = new List<SelectListItem>();
             }
-            public GridModel<ProductModel> Products { get; set; }
 
             [NopResourceDisplayName("Admin.Catalog.Products.List.SearchProductName")]
             [AllowHtml]
@@ -158,11 +160,14 @@ namespace Nop.Admin.Models.Catalog
             public int SearchStoreId { get; set; }
             [NopResourceDisplayName("Admin.Catalog.Products.List.SearchVendor")]
             public int SearchVendorId { get; set; }
+            [NopResourceDisplayName("Admin.Catalog.Products.List.SearchProductType")]
+            public int SearchProductTypeId { get; set; }
 
             public IList<SelectListItem> AvailableCategories { get; set; }
             public IList<SelectListItem> AvailableManufacturers { get; set; }
             public IList<SelectListItem> AvailableStores { get; set; }
             public IList<SelectListItem> AvailableVendors { get; set; }
+            public IList<SelectListItem> AvailableProductTypes { get; set; }
 
             public int CategoryId { get; set; }
 

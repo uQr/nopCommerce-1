@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -9,7 +8,6 @@ using System.Data.Entity.ModelConfiguration;
 using System.Linq;
 using System.Reflection;
 using Nop.Core;
-using Nop.Data.Mapping.Localization;
 using NuoDb.Data.Client;
 
 namespace Nop.Data
@@ -19,12 +17,18 @@ namespace Nop.Data
     /// </summary>
     public class NopObjectContext : DbContext, IDbContext
     {
+        #region Ctor
+
         public NopObjectContext(string nameOrConnectionString)
             : base(nameOrConnectionString)
         {
             //((IObjectContextAdapter) this).ObjectContext.ContextOptions.LazyLoadingEnabled = true;
         }
         
+        #endregion
+
+        #region Utilities
+
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
             //dynamically load all configuration
@@ -44,11 +48,13 @@ namespace Nop.Data
 
 			if (Database.Connection is NuoDbConnection)
 			{
-				SchemaRewriteHelper.RewriteSchema(modelBuilder, new NuoDbConnectionStringBuilder(this.Database.Connection.ConnectionString).Schema);
+				var schema = new NuoDbConnectionStringBuilder(this.Database.Connection.ConnectionString).Schema;
+				modelBuilder.HasDefaultSchema(schema);
 			}
 
             base.OnModelCreating(modelBuilder);
         }
+
 
         /// <summary>
         /// Attach an entity to the context or return an already attached entity (if it was already attached)
@@ -73,6 +79,10 @@ namespace Nop.Data
                 return alreadyAttached;
             }
         }
+
+        #endregion
+
+        #region Methods
 
         /// <summary>
         /// Create database script
@@ -102,79 +112,43 @@ namespace Nop.Data
         /// <returns>Entities</returns>
         public IList<TEntity> ExecuteStoredProcedureList<TEntity>(string commandText, params object[] parameters) where TEntity : BaseEntity, new()
         {
-            //HACK: Entity Framework Code First doesn't support doesn't support output parameters
-            //That's why we have to manually create command and execute it.
-            //just wait until EF Code First starts support them
-            //
-            //More info: http://weblogs.asp.net/dwahlin/archive/2011/09/23/using-entity-framework-code-first-with-stored-procedures-that-have-output-parameters.aspx
-
-            bool hasOutputParameters = false;
-            if (parameters != null)
+            //add parameters to command
+            if (parameters != null && parameters.Length > 0)
             {
-                foreach (var p in parameters)
+                for (int i = 0; i <= parameters.Length - 1; i++)
                 {
-                    var outputP = p as DbParameter;
-                    if (outputP == null)
-                        continue;
+                    var p = parameters[i] as DbParameter;
+                    if (p == null)
+                        throw new Exception("Not support parameter type");
 
-                    if (outputP.Direction == ParameterDirection.InputOutput ||
-                        outputP.Direction == ParameterDirection.Output)
-                        hasOutputParameters = true;
+                    commandText += i == 0 ? " " : ", ";
+
+                    commandText += "@" + p.ParameterName;
+                    if (p.Direction == ParameterDirection.InputOutput || p.Direction == ParameterDirection.Output)
+                    {
+                        //output parameter
+                        commandText += " output";
+                    }
                 }
             }
 
+            var result = this.Database.SqlQuery<TEntity>(commandText, parameters).ToList();
 
-
-            var context = ((IObjectContextAdapter)(this)).ObjectContext;
-            if (!hasOutputParameters)
+            //performance hack applied as described here - http://www.nopcommerce.com/boards/t/25483/fix-very-important-speed-improvement.aspx
+            bool acd = this.Configuration.AutoDetectChangesEnabled;
+            try
             {
-                //no output parameters
-                var result = this.Database.SqlQuery<TEntity>(commandText, parameters).ToList();
+                this.Configuration.AutoDetectChangesEnabled = false;
+
                 for (int i = 0; i < result.Count; i++)
                     result[i] = AttachEntityToContext(result[i]);
-                        
-                return result;
-                
-                //var result = context.ExecuteStoreQuery<TEntity>(commandText, parameters).ToList();
-                //foreach (var entity in result)
-                //    Set<TEntity>().Attach(entity);
-                //return result;
             }
-            else
+            finally
             {
-
-                //var connection = context.Connection;
-                var connection = this.Database.Connection;
-                //Don't close the connection after command execution
-
-
-                //open the connection for use
-                if (connection.State == ConnectionState.Closed)
-                    connection.Open();
-                //create a command object
-                using (var cmd = connection.CreateCommand())
-                {
-                    //command to execute
-                    cmd.CommandText = commandText;
-                    cmd.CommandType = CommandType.StoredProcedure;
-
-                    // move parameters to command object
-                    if (parameters != null)
-                        foreach (var p in parameters)
-                            cmd.Parameters.Add(p);
-
-                    //database call
-                    var reader = cmd.ExecuteReader();
-                    //return reader.DataReaderToObjectList<TEntity>();
-                    var result = context.Translate<TEntity>(reader).ToList();
-                    for (int i = 0; i < result.Count; i++)
-                        result[i] = AttachEntityToContext(result[i]);
-                    //close up the reader, we're done saving results
-                    reader.Close();
-                    return result;
-                }
-
+                this.Configuration.AutoDetectChangesEnabled = acd;
             }
+
+            return result;
         }
 
         /// <summary>
@@ -193,10 +167,11 @@ namespace Nop.Data
         /// Executes the given DDL/DML command against the database.
         /// </summary>
         /// <param name="sql">The command string</param>
+        /// <param name="doNotEnsureTransaction">false - the transaction creation is not ensured; true - the transaction creation is ensured.</param>
         /// <param name="timeout">Timeout value, in seconds. A null value indicates that the default value of the underlying provider will be used</param>
         /// <param name="parameters">The parameters to apply to the command string.</param>
         /// <returns>The result returned by the database after executing the command.</returns>
-        public int ExecuteSqlCommand(string sql, int? timeout = null, params object[] parameters)
+        public int ExecuteSqlCommand(string sql, bool doNotEnsureTransaction = false, int? timeout = null, params object[] parameters)
         {
             int? previousTimeout = null;
             if (timeout.HasValue)
@@ -206,7 +181,10 @@ namespace Nop.Data
                 ((IObjectContextAdapter) this).ObjectContext.CommandTimeout = timeout;
             }
 
-            var result = this.Database.ExecuteSqlCommand(sql, parameters);
+            var transactionalBehavior = doNotEnsureTransaction
+                ? TransactionalBehavior.DoNotEnsureTransaction
+                : TransactionalBehavior.EnsureTransaction;
+            var result = this.Database.ExecuteSqlCommand(transactionalBehavior, sql, parameters);
 
             if (timeout.HasValue)
             {
@@ -218,56 +196,6 @@ namespace Nop.Data
             return result;
         }
 
-		/// <summary>
-		/// http://blog.cincura.net/233319-changing-default-schema-dynamically-in-pre-entity-framework-6/
-		/// </summary>
-		static class SchemaRewriteHelper
-		{
-			const BindingFlags RewriteSchemaBindingFlags = BindingFlags.Instance | BindingFlags.NonPublic;
-
-			public static void RewriteSchema(DbModelBuilder modelBuilder, string schema)
-			{
-				var modelBuilderType = modelBuilder.GetType();
-				var modelConfiguration = modelBuilderType.GetProperty("ModelConfiguration", RewriteSchemaBindingFlags).GetValue(modelBuilder);
-				var activeEntityConfigurations = (IList)modelConfiguration.GetType().GetProperty("ActiveEntityConfigurations", RewriteSchemaBindingFlags).GetValue(modelConfiguration);
-				foreach (var item in activeEntityConfigurations)
-				{
-					RewriteSchemaForEntityTypeConfiguration(item, schema);
-				}
-			}
-
-			static void RewriteSchemaForEntityTypeConfiguration(object entityTypeConfiguration, string schema)
-			{
-				// not bulletproof, but better than nothing
-				if (entityTypeConfiguration.GetType().Name != "EntityTypeConfiguration")
-					throw new ArgumentException();
-
-				var entityTypeConfigurationType = entityTypeConfiguration.GetType();
-				var entityMappingConfigurations = ((IList)entityTypeConfigurationType.GetField("_entityMappingConfigurations", RewriteSchemaBindingFlags).GetValue(entityTypeConfiguration));
-				foreach (var entityMappingConfiguration in entityMappingConfigurations)
-				{
-					var navigationPropertyConfigurations = (IDictionary)entityTypeConfigurationType.GetField("_navigationPropertyConfigurations", RewriteSchemaBindingFlags).GetValue(entityTypeConfiguration);
-					foreach (var val in navigationPropertyConfigurations.Values)
-					{
-						var associationMappingConfiguration = val.GetType().GetProperty("AssociationMappingConfiguration", RewriteSchemaBindingFlags).GetValue(val);
-						if (associationMappingConfiguration == null)
-							continue;
-						var tableNameAssociation = associationMappingConfiguration.GetType().GetField("_tableName", RewriteSchemaBindingFlags).GetValue(associationMappingConfiguration);
-						var schemaAssociation = (string)tableNameAssociation.GetType().GetProperty("Schema").GetValue(tableNameAssociation);
-						var nameAssociation = (string)tableNameAssociation.GetType().GetProperty("Name").GetValue(tableNameAssociation);
-						ToTableHelper(associationMappingConfiguration, nameAssociation, schemaAssociation ?? schema);
-					}
-					var tableNameEntity = entityMappingConfiguration.GetType().GetProperty("TableName").GetValue(entityMappingConfiguration);
-					var schemaEntity = (string)tableNameEntity.GetType().GetProperty("Schema").GetValue(tableNameEntity);
-					var nameEntity = (string)tableNameEntity.GetType().GetProperty("Name").GetValue(tableNameEntity);
-					ToTableHelper(entityTypeConfiguration, nameEntity, schemaEntity ?? schema);
-				}
-			}
-
-			static void ToTableHelper(object configuration, string name, string schema)
-			{
-				configuration.GetType().GetMethod("ToTable", new[] { typeof(string), typeof(string) }).Invoke(configuration, new[] { name, schema });
-			}
-		}
+        #endregion
     }
 }

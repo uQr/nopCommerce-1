@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Nop.Data.Tests</RootNamespace>
     <AssemblyName>Nop.Data.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -34,25 +34,28 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EntityFramework, Version=5.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+    <Reference Include="EntityFramework, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\EntityFramework.5.0.0\lib\net45\EntityFramework.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.6.1.0\lib\net45\EntityFramework.dll</HintPath>
     </Reference>
-    <Reference Include="nunit.framework, Version=2.6.2.12296, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
+    <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\packages\NUnit.2.6.2\lib\nunit.framework.dll</HintPath>
+      <HintPath>..\..\packages\EntityFramework.6.1.0\lib\net45\EntityFramework.SqlServer.dll</HintPath>
+    </Reference>
+    <Reference Include="EntityFramework.SqlServerCompact, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\EntityFramework.SqlServerCompact.6.1.0\lib\net45\EntityFramework.SqlServerCompact.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.framework, Version=2.6.3.13283, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\packages\NUnit.2.6.3\lib\nunit.framework.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Data.Entity" />
     <Reference Include="System.Data.SqlServerCe, Version=4.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
       <Private>True</Private>
       <HintPath>..\..\packages\Microsoft.SqlServer.Compact.4.0.8876.1\lib\net40\System.Data.SqlServerCe.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Data.SqlServerCe.Entity, Version=4.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91, processorArchitecture=MSIL">
-      <Private>True</Private>
-      <HintPath>..\..\packages\EntityFramework.SqlServerCompact.4.3.5\lib\net40\System.Data.SqlServerCe.Entity.dll</HintPath>
     </Reference>
     <Reference Include="System.Transactions" />
     <Reference Include="System.Xml.Linq" />
@@ -66,9 +69,13 @@
     <Compile Include="Catalog\BackInStockSubscriptionPersistenceTests.cs" />
     <Compile Include="Catalog\ManufacturerTemplatePersistenceTests.cs" />
     <Compile Include="Catalog\ProductTemplatePersistenceTests.cs" />
+    <Compile Include="Common\SearchTermPeristenceTests.cs" />
     <Compile Include="Common\AddressPeristenceTests.cs" />
     <Compile Include="Catalog\CategoryPersistenceTests.cs" />
     <Compile Include="Common\GenericAttributePersistenceTests.cs" />
+    <Compile Include="Customers\CustomerAttributePersistenceTests.cs" />
+    <Compile Include="Customers\CustomerAttributeValuePersistenceTests.cs" />
+    <Compile Include="Shipping\DeliveryDatePersistenceTests.cs" />
     <Compile Include="Vendors\VendorPersistenceTests.cs" />
     <Compile Include="Stores\StoreMappingPersistenceTests.cs" />
     <Compile Include="Stores\StorePersistenceTests.cs" />
@@ -83,7 +90,7 @@
     <Compile Include="Logging\ActivityLogPersistenceTests.cs" />
     <Compile Include="Catalog\ProductTagPersistenceTests.cs" />
     <Compile Include="Polls\PollPersistenceTests.cs" />
-    <Compile Include="Shipping\ShipmentOrderProductVariantPersistenceTests.cs" />
+    <Compile Include="Shipping\ShipmentItemPersistenceTests.cs" />
     <Compile Include="Shipping\ShipmentPersistenceTests.cs" />
     <Compile Include="Tasks\ScheduleTaskPersistenceTests.cs" />
     <Compile Include="Topics\TopicPersistenceTests.cs" />
@@ -98,7 +105,7 @@
     <Compile Include="Orders\ReturnRequestPersistenceTests.cs" />
     <Compile Include="Orders\RecurringPaymentHistoryPersistenceTests.cs" />
     <Compile Include="Orders\RecurringPaymentPersistenceTests.cs" />
-    <Compile Include="Orders\OrderProductVariantPersistenceTests.cs" />
+    <Compile Include="Orders\OrderItemPersistenceTests.cs" />
     <Compile Include="Orders\OrderNotePersistenceTests.cs" />
     <Compile Include="Media\DownloadPersistenceTests.cs" />
     <Compile Include="Messages\EmailAccountPersistenceTests.cs" />
@@ -134,7 +141,6 @@
     <Compile Include="Catalog\ProductPicturePersistenceTests.cs" />
     <Compile Include="Catalog\ProductManufacturerPersistenceTests.cs" />
     <Compile Include="Catalog\ProductCategoryPersistenceTests.cs" />
-    <Compile Include="Catalog\ProductVariantPersistenceTests.cs" />
     <Compile Include="Catalog\ProductPersistenceTests.cs" />
     <Compile Include="Media\PicturePersistenceTests.cs" />
     <Compile Include="Catalog\ManufacturerPersistenceTests.cs" />
@@ -162,7 +168,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="packages.config" />
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

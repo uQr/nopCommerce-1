@@ -3,10 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 using Nop.Admin.Models.Catalog;
-using Nop.Admin.Models.Stores;
-using Nop.Core;
 using Nop.Core.Domain.Catalog;
-using Nop.Core.Domain.Common;
 using Nop.Services.Catalog;
 using Nop.Services.Customers;
 using Nop.Services.ExportImport;
@@ -17,14 +14,14 @@ using Nop.Services.Security;
 using Nop.Services.Seo;
 using Nop.Services.Stores;
 using Nop.Services.Vendors;
+using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
+using Nop.Web.Framework.Kendoui;
 using Nop.Web.Framework.Mvc;
-using Telerik.Web.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-    [AdminAuthorize]
-    public partial class ManufacturerController : BaseNopController
+    public partial class ManufacturerController : BaseAdminController
     {
         #region Fields
 
@@ -45,23 +42,30 @@ namespace Nop.Admin.Controllers
         private readonly IVendorService _vendorService;
         private readonly IAclService _aclService; 
         private readonly IPermissionService _permissionService;
-        private readonly AdminAreaSettings _adminAreaSettings;
         private readonly CatalogSettings _catalogSettings;
 
         #endregion
         
         #region Constructors
 
-        public ManufacturerController(ICategoryService categoryService, IManufacturerService manufacturerService,
-            IManufacturerTemplateService manufacturerTemplateService, IProductService productService,
-            ICustomerService customerService, IStoreService storeService,
+        public ManufacturerController(ICategoryService categoryService, 
+            IManufacturerService manufacturerService,
+            IManufacturerTemplateService manufacturerTemplateService,
+            IProductService productService,
+            ICustomerService customerService, 
+            IStoreService storeService,
             IStoreMappingService storeMappingService,
-            IUrlRecordService urlRecordService, IPictureService pictureService,
-            ILanguageService languageService, ILocalizationService localizationService,
-            ILocalizedEntityService localizedEntityService, IExportManager exportManager,
-            ICustomerActivityService customerActivityService, IVendorService vendorService,
-            IAclService aclService, IPermissionService permissionService,
-            AdminAreaSettings adminAreaSettings, CatalogSettings catalogSettings)
+            IUrlRecordService urlRecordService, 
+            IPictureService pictureService,
+            ILanguageService languageService, 
+            ILocalizationService localizationService,
+            ILocalizedEntityService localizedEntityService, 
+            IExportManager exportManager,
+            ICustomerActivityService customerActivityService, 
+            IVendorService vendorService,
+            IAclService aclService,
+            IPermissionService permissionService,
+            CatalogSettings catalogSettings)
         {
             this._categoryService = categoryService;
             this._manufacturerTemplateService = manufacturerTemplateService;
@@ -80,7 +84,6 @@ namespace Nop.Admin.Controllers
             this._vendorService = vendorService;
             this._aclService = aclService;
             this._permissionService = permissionService;
-            this._adminAreaSettings = adminAreaSettings;
             this._catalogSettings = catalogSettings;
         }
 
@@ -256,32 +259,24 @@ namespace Nop.Admin.Controllers
                 return AccessDeniedView();
 
             var model = new ManufacturerListModel();
-            var manufacturers = _manufacturerService.GetAllManufacturers(null, 0, _adminAreaSettings.GridPageSize, true);
-            model.Manufacturers = new GridModel<ManufacturerModel>
-            {
-                Data = manufacturers.Select(x => x.ToModel()),
-                Total = manufacturers.TotalCount
-            };
             return View(model);
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult List(GridCommand command, ManufacturerListModel model)
+        [HttpPost]
+        public ActionResult List(DataSourceRequest command, ManufacturerListModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
                 return AccessDeniedView();
 
             var manufacturers = _manufacturerService.GetAllManufacturers(model.SearchManufacturerName,
                 command.Page - 1, command.PageSize, true);
-            var gridModel = new GridModel<ManufacturerModel>
+            var gridModel = new DataSourceResult
             {
                 Data = manufacturers.Select(x => x.ToModel()),
                 Total = manufacturers.TotalCount
             };
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
 
         #endregion
@@ -312,7 +307,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(ManufacturerModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
@@ -385,7 +380,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Edit(ManufacturerModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
@@ -425,7 +420,18 @@ namespace Nop.Admin.Controllers
                 _customerActivityService.InsertActivity("EditManufacturer", _localizationService.GetResource("ActivityLog.EditManufacturer"), manufacturer.Name);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Catalog.Manufacturers.Updated"));
-                return continueEditing ? RedirectToAction("Edit", manufacturer.Id) : RedirectToAction("List");
+
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", manufacturer.Id);
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
 
@@ -471,7 +477,7 @@ namespace Nop.Admin.Controllers
 
             try
             {
-                var manufacturers = _manufacturerService.GetAllManufacturers(true);
+                var manufacturers = _manufacturerService.GetAllManufacturers(showHidden: true);
                 var xml = _exportManager.ExportManufacturersToXml(manufacturers);
                 return new XmlDownloadResult(xml, "manufacturers.xml");
             }
@@ -486,8 +492,8 @@ namespace Nop.Admin.Controllers
 
         #region Products
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult ProductList(GridCommand command, int manufacturerId)
+        [HttpPost]
+        public ActionResult ProductList(DataSourceRequest command, int manufacturerId)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
                 return AccessDeniedView();
@@ -495,7 +501,7 @@ namespace Nop.Admin.Controllers
             var productManufacturers = _manufacturerService.GetProductManufacturersByManufacturerId(manufacturerId,
                 command.Page - 1, command.PageSize, true);
 
-            var model = new GridModel<ManufacturerModel.ManufacturerProductModel>
+            var gridModel = new DataSourceResult
             {
                 Data = productManufacturers
                 .Select(x =>
@@ -513,14 +519,12 @@ namespace Nop.Admin.Controllers
                 Total = productManufacturers.TotalCount
             };
 
-            return new JsonResult
-            {
-                Data = model
-            };
+
+            return Json(gridModel);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult ProductUpdate(GridCommand command, ManufacturerModel.ManufacturerProductModel model)
+        [HttpPost]
+        public ActionResult ProductUpdate(ManufacturerModel.ManufacturerProductModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
                 return AccessDeniedView();
@@ -533,11 +537,11 @@ namespace Nop.Admin.Controllers
             productManufacturer.DisplayOrder = model.DisplayOrder1;
             _manufacturerService.UpdateProductManufacturer(productManufacturer);
 
-            return ProductList(command, productManufacturer.ManufacturerId);
+            return new NullJsonResult();
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult ProductDelete(int id, GridCommand command)
+        [HttpPost]
+        public ActionResult ProductDelete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
                 return AccessDeniedView();
@@ -546,10 +550,10 @@ namespace Nop.Admin.Controllers
             if (productManufacturer == null)
                 throw new ArgumentException("No product manufacturer mapping found with the specified id");
 
-            var manufacturerId = productManufacturer.ManufacturerId;
+            //var manufacturerId = productManufacturer.ManufacturerId;
             _manufacturerService.DeleteProductManufacturer(productManufacturer);
 
-            return ProductList(command, manufacturerId);
+            return new NullJsonResult();
         }
 
         public ActionResult ProductAddPopup(int manufacturerId)
@@ -557,25 +561,16 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
                 return AccessDeniedView();
 
-            var products = _productService.SearchProducts(
-                pageSize: _adminAreaSettings.GridPageSize,
-                showHidden: true
-                );
-
             var model = new ManufacturerModel.AddManufacturerProductModel();
-            model.Products = new GridModel<ProductModel>
-            {
-                Data = products.Select(x => x.ToModel()),
-                Total = products.TotalCount
-            };
             //categories
             model.AvailableCategories.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
-            foreach (var c in _categoryService.GetAllCategories(showHidden: true))
-                model.AvailableCategories.Add(new SelectListItem() { Text = c.GetCategoryNameWithPrefix(_categoryService), Value = c.Id.ToString() });
+            var categories = _categoryService.GetAllCategories(showHidden: true);
+            foreach (var c in categories)
+                model.AvailableCategories.Add(new SelectListItem() { Text = c.GetFormattedBreadCrumb(categories), Value = c.Id.ToString() });
 
             //manufacturers
             model.AvailableManufacturers.Add(new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
-            foreach (var m in _manufacturerService.GetAllManufacturers(true))
+            foreach (var m in _manufacturerService.GetAllManufacturers(showHidden: true))
                 model.AvailableManufacturers.Add(new SelectListItem() { Text = m.Name, Value = m.Id.ToString() });
 
             //stores
@@ -588,21 +583,26 @@ namespace Nop.Admin.Controllers
             foreach (var v in _vendorService.GetAllVendors(0, int.MaxValue, true))
                 model.AvailableVendors.Add(new SelectListItem() { Text = v.Name, Value = v.Id.ToString() });
 
+            //product types
+            model.AvailableProductTypes = ProductType.SimpleProduct.ToSelectList(false).ToList();
+            model.AvailableProductTypes.Insert(0, new SelectListItem() { Text = _localizationService.GetResource("Admin.Common.All"), Value = "0" });
+
             return View(model);
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult ProductAddPopupList(GridCommand command, ManufacturerModel.AddManufacturerProductModel model)
+        [HttpPost]
+        public ActionResult ProductAddPopupList(DataSourceRequest command, ManufacturerModel.AddManufacturerProductModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageManufacturers))
                 return AccessDeniedView();
 
-            var gridModel = new GridModel();
+            var gridModel = new DataSourceResult();
             var products = _productService.SearchProducts(
                 categoryIds: new List<int>() { model.SearchCategoryId },
                 manufacturerId: model.SearchManufacturerId,
                 storeId: model.SearchStoreId,
                 vendorId: model.SearchVendorId,
+                productType: model.SearchProductTypeId > 0 ? (ProductType?)model.SearchProductTypeId : null,
                 keywords: model.SearchProductName,
                 pageIndex: command.Page - 1,
                 pageSize: command.PageSize,
@@ -610,10 +610,8 @@ namespace Nop.Admin.Controllers
                 );
             gridModel.Data = products.Select(x => x.ToModel());
             gridModel.Total = products.TotalCount;
-            return new JsonResult
-            {
-                Data = gridModel
-            };
+
+            return Json(gridModel);
         }
         
         [HttpPost]
@@ -649,7 +647,6 @@ namespace Nop.Admin.Controllers
             ViewBag.RefreshPage = true;
             ViewBag.btnId = btnId;
             ViewBag.formId = formId;
-            model.Products = new GridModel<ProductModel>();
             return View(model);
         }
 

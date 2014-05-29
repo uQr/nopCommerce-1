@@ -137,7 +137,4 @@
   <LocaleResource Name="WindowsAuthentication">
     <Value> integrated Windows authentication کا استعمال کریں </Value>
   </LocaleResource>
-	<LocaleResource Name="NuoDB">
-		<Value>NuoDB</Value>
-	</LocaleResource>
 </Language>

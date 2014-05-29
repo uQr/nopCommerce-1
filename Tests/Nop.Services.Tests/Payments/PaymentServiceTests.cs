@@ -1,20 +1,22 @@
 ﻿using System.Collections.Generic;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
-using Nop.Core.Infrastructure;
 using Nop.Core.Plugins;
+using Nop.Services.Configuration;
 using Nop.Services.Payments;
 using Nop.Tests;
 using NUnit.Framework;
+using Rhino.Mocks;
 
 namespace Nop.Services.Tests.Payments
 {
     [TestFixture]
     public class PaymentServiceTests : ServiceTest
     {
-        PaymentSettings _paymentSettings;
-        ShoppingCartSettings _shoppingCartSettings;
-        IPaymentService _paymentService;
+        private PaymentSettings _paymentSettings;
+        private ShoppingCartSettings _shoppingCartSettings;
+        private ISettingService _settingService;
+        private IPaymentService _paymentService;
         
         [SetUp]
         public new void SetUp()
@@ -26,8 +28,9 @@ namespace Nop.Services.Tests.Payments
             var pluginFinder = new PluginFinder();
 
             _shoppingCartSettings = new ShoppingCartSettings();
+            _settingService = MockRepository.GenerateMock<ISettingService>();
 
-            _paymentService = new PaymentService(_paymentSettings, pluginFinder, _shoppingCartSettings);
+            _paymentService = new PaymentService(_paymentSettings, pluginFinder, _settingService, _shoppingCartSettings);
         }
 
         [Test]

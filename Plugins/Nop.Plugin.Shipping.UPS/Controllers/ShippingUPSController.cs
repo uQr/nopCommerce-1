@@ -5,24 +5,21 @@ using Nop.Core;
 using Nop.Plugin.Shipping.UPS.Domain;
 using Nop.Plugin.Shipping.UPS.Models;
 using Nop.Services.Configuration;
-using Nop.Services.Directory;
+using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
 
 namespace Nop.Plugin.Shipping.UPS.Controllers
 {
     [AdminAuthorize]
-    public class ShippingUPSController : Controller
+    public class ShippingUPSController : BasePluginController
     {
         private readonly UPSSettings _upsSettings;
         private readonly ISettingService _settingService;
-        private readonly ICountryService _countryService;
 
-        public ShippingUPSController(UPSSettings upsSettings, ISettingService settingService,
-            ICountryService countryService)
+        public ShippingUPSController(UPSSettings upsSettings, ISettingService settingService)
         {
             this._upsSettings = upsSettings;
             this._settingService = settingService;
-            this._countryService = countryService;
         }
 
         [ChildActionOnly]
@@ -35,6 +32,10 @@ namespace Nop.Plugin.Shipping.UPS.Controllers
             model.Password = _upsSettings.Password;
             model.AdditionalHandlingCharge = _upsSettings.AdditionalHandlingCharge;
             model.InsurePackage = _upsSettings.InsurePackage;
+            model.PackingPackageVolume = _upsSettings.PackingPackageVolume;
+            model.PackingType = Convert.ToInt32(_upsSettings.PackingType);
+            model.PackingTypeValues = _upsSettings.PackingType.ToSelectList();
+            model.PassDimensions = _upsSettings.PassDimensions;
 
             foreach (UPSCustomerClassification customerClassification in Enum.GetValues(typeof(UPSCustomerClassification)))
             {
@@ -63,17 +64,6 @@ namespace Nop.Plugin.Shipping.UPS.Controllers
                     Selected = packagingType == _upsSettings.PackagingType
                 });
             }
-
-            foreach (var country in _countryService.GetAllCountries(true))
-            {
-                model.AvailableCountries.Add(new SelectListItem()
-                {
-                    Text = country.Name.ToString(),
-                    Value = country.Id.ToString(),
-                    Selected = country.Id == _upsSettings.DefaultShippedFromCountryId
-                });
-            }
-            model.DefaultShippedFromZipPostalCode = _upsSettings.DefaultShippedFromZipPostalCode;
 
             var services = new UPSServices();
             // Load Domestic service names
@@ -115,8 +105,10 @@ namespace Nop.Plugin.Shipping.UPS.Controllers
             _upsSettings.CustomerClassification = (UPSCustomerClassification)Enum.Parse(typeof(UPSCustomerClassification), model.CustomerClassification);
             _upsSettings.PickupType = (UPSPickupType)Enum.Parse(typeof(UPSPickupType), model.PickupType);
             _upsSettings.PackagingType = (UPSPackagingType)Enum.Parse(typeof(UPSPackagingType), model.PackagingType);
-            _upsSettings.DefaultShippedFromCountryId = model.DefaultShippedFromCountryId;
-            _upsSettings.DefaultShippedFromZipPostalCode = model.DefaultShippedFromZipPostalCode;
+            _upsSettings.PackingPackageVolume = model.PackingPackageVolume;
+            _upsSettings.PackingType = (PackingType)model.PackingType;
+            _upsSettings.PassDimensions = model.PassDimensions;
+            _upsSettings.Tracing = model.Tracing;
 
 
             // Save selected services

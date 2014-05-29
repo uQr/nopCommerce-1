@@ -1,4 +1,5 @@
-﻿using Nop.Web.Framework;
+﻿using System.Web.Mvc;
+using Nop.Web.Framework;
 using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Models.Settings
@@ -21,6 +22,10 @@ namespace Nop.Admin.Models.Settings
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ShowGtin")]
         public bool ShowGtin { get; set; }
         public bool ShowGtin_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ShowFreeShippingNotification")]
+        public bool ShowFreeShippingNotification { get; set; }
+        public bool ShowFreeShippingNotification_OverrideForStore { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.AllowProductSorting")]
         public bool AllowProductSorting { get; set; }
@@ -49,6 +54,11 @@ namespace Nop.Admin.Models.Settings
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ShowShareButton")]
         public bool ShowShareButton { get; set; }
         public bool ShowShareButton_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.PageShareCode")]
+        [AllowHtml]
+        public string PageShareCode { get; set; }
+        public bool PageShareCode_OverrideForStore { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ProductReviewsMustBeApproved")]
         public bool ProductReviewsMustBeApproved { get; set; }
@@ -158,8 +168,32 @@ namespace Nop.Admin.Models.Settings
         public bool IgnoreFeaturedProducts { get; set; }
         public bool IgnoreFeaturedProducts_OverrideForStore { get; set; }
 
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.IgnoreAcl")]
+        public bool IgnoreAcl { get; set; }
+        public bool IgnoreAcl_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.IgnoreStoreLimitations")]
+        public bool IgnoreStoreLimitations { get; set; }
+        public bool IgnoreStoreLimitations_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.TopCategoryMenuSubcategoryLevelsToDisplay")]
+        public int TopCategoryMenuSubcategoryLevelsToDisplay { get; set; }
+        public bool TopCategoryMenuSubcategoryLevelsToDisplay_OverrideForStore { get; set; }
+
         [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.ManufacturersBlockItemsToDisplay")]
         public int ManufacturersBlockItemsToDisplay { get; set; }
         public bool ManufacturersBlockItemsToDisplay_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.DisplayTaxShippingInfoFooter")]
+        public bool DisplayTaxShippingInfoFooter { get; set; }
+        public bool DisplayTaxShippingInfoFooter_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.DisplayTaxShippingInfoProductDetailsPage")]
+        public bool DisplayTaxShippingInfoProductDetailsPage { get; set; }
+        public bool DisplayTaxShippingInfoProductDetailsPage_OverrideForStore { get; set; }
+
+        [NopResourceDisplayName("Admin.Configuration.Settings.Catalog.DisplayTaxShippingInfoProductBoxes")]
+        public bool DisplayTaxShippingInfoProductBoxes { get; set; }
+        public bool DisplayTaxShippingInfoProductBoxes_OverrideForStore { get; set; }
     }
 }

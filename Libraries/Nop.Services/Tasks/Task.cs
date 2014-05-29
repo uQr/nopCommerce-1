@@ -38,11 +38,16 @@ namespace Nop.Services.Tasks
                 var type2 = System.Type.GetType(this.Type);
                 if (type2 != null)
                 {
+                    //background tasks has an issue with Autofac
+                    //because scope is generated each time it's requested
+                    //that's why we get one single scope here 
+                    var scope = EngineContext.Current.ContainerManager.Scope();
+
                     object instance;
-                    if (!EngineContext.Current.ContainerManager.TryResolve(type2, out instance))
+                    if (!EngineContext.Current.ContainerManager.TryResolve(type2, scope, out instance))
                     {
                         //not resolved
-                        instance = EngineContext.Current.ContainerManager.ResolveUnregistered(type2);
+                        instance = EngineContext.Current.ContainerManager.ResolveUnregistered(type2, scope);
                     }
                     task = instance as ITask;
                 }
@@ -53,7 +58,8 @@ namespace Nop.Services.Tasks
         /// <summary>
         /// Executes the task
         /// </summary>
-        public void Execute()
+        /// <param name="throwException">A value indicating whether eexception should be thrown if some error happens</param>
+        public void Execute(bool throwException = false)
         {
             this.IsRunning = true;
 
@@ -86,6 +92,8 @@ namespace Nop.Services.Tasks
                 //log error
                 var logger = EngineContext.Current.Resolve<ILogger>();
                 logger.Error(string.Format("Error while running the '{0}' schedule task. {1}", this.Name, exc.Message), exc);
+                if (throwException)
+                    throw;
             }
 
             if (scheduleTask != null)
@@ -137,6 +145,6 @@ namespace Nop.Services.Tasks
         /// <summary>
         /// A value indicating whether the task is enabled
         /// </summary>
-        public bool Enabled { get; private set; }
+        public bool Enabled { get; set; }
     }
 }

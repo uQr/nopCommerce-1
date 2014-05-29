@@ -1,5 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Web.Mvc;
+﻿using System.Web.Mvc;
 using FluentValidation.Attributes;
 using Nop.Admin.Validators.Directory;
 using Nop.Web.Framework;
@@ -19,13 +18,12 @@ namespace Nop.Admin.Models.Directory
         public string SystemKeyword { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Measures.Dimensions.Fields.Ratio")]
-        [UIHint("Decimal8")]
         public decimal Ratio { get; set; }
 
         [NopResourceDisplayName("Admin.Configuration.Measures.Dimensions.Fields.DisplayOrder")]
         public int DisplayOrder { get; set; }
 
-        [NopResourceDisplayName("Admin.Configuration.Measures.Dimensions.Fields.IsPrimaryWeight")]
+        [NopResourceDisplayName("Admin.Configuration.Measures.Dimensions.Fields.IsPrimaryDimension")]
         public bool IsPrimaryDimension { get; set; }
     }
 }

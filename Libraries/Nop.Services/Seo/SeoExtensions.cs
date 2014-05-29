@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Nop.Core;
-using Nop.Core.Domain.Blogs;
 using Nop.Core.Domain.Catalog;
-using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Forums;
-using Nop.Core.Domain.News;
 using Nop.Core.Domain.Seo;
 using Nop.Core.Infrastructure;
 using Nop.Services.Localization;
@@ -145,7 +142,7 @@ namespace Nop.Services.Seo
                 if (ensureTwoPublishedLanguages)
                 {
                     var lService = EngineContext.Current.Resolve<ILanguageService>();
-                    var totalPublishedLanguages = lService.GetAllLanguages(false).Count;
+                    var totalPublishedLanguages = lService.GetAllLanguages().Count;
                     loadLocalizedValue = totalPublishedLanguages >= 2;
                 }
                 //localized value
@@ -185,7 +182,10 @@ namespace Nop.Services.Seo
             seName = GetSeName(seName);
 
             //max length
-            seName = CommonHelper.EnsureMaximumLength(seName, 400);
+            //For long URLs we can get the following error:
+            //"the specified path, file name, or both are too long. The fully qualified file name must be less than 260 characters, and the directory name must be less than 248 characters"
+            //that's why we limit it to 200 here (consider a store URL + probably added {0}-{1} below)
+            seName = CommonHelper.EnsureMaximumLength(seName, 200);
 
             if (String.IsNullOrWhiteSpace(seName))
             {
@@ -1321,6 +1321,16 @@ namespace Nop.Services.Seo
                     _seoCharacterTable.Add(ToUnichar("044D"), "e");  // RUSSIAN SMALL LETTER э
                     _seoCharacterTable.Add(ToUnichar("044E"), "yu");  // RUSSIAN SMALL LETTER ю
                     _seoCharacterTable.Add(ToUnichar("044F"), "ya");  // RUSSIAN SMALL LETTER я
+                    _seoCharacterTable.Add(ToUnichar("0406"), "I");  // Ukraine-Byelorussian CAPITAL LETTER І
+                    _seoCharacterTable.Add(ToUnichar("0456"), "i");  // Ukraine-Byelorussian SMALL LETTER і
+                    _seoCharacterTable.Add(ToUnichar("0407"), "I");  // Ukraine CAPITAL LETTER Ї
+                    _seoCharacterTable.Add(ToUnichar("0457"), "i");  // Ukraine SMALL LETTER ї
+                    _seoCharacterTable.Add(ToUnichar("0404"), "Ie");  // Ukraine CAPITAL LETTER Є
+                    _seoCharacterTable.Add(ToUnichar("0454"), "ie");  // Ukraine SMALL LETTER є
+                    _seoCharacterTable.Add(ToUnichar("0490"), "G");  // Ukraine CAPITAL LETTER Ґ
+                    _seoCharacterTable.Add(ToUnichar("0491"), "g");  // Ukraine SMALL LETTER ґ
+                    _seoCharacterTable.Add(ToUnichar("040E"), "U");  // Byelorussian CAPITAL LETTER Ў
+                    _seoCharacterTable.Add(ToUnichar("045E"), "u");  // Byelorussian SMALL LETTER ў
                 }
             }
 

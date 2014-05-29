@@ -7,14 +7,12 @@ using Nop.Services.Configuration;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Security;
-using Nop.Web.Framework;
-using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-    public partial class MeasureController : BaseNopController
+    public partial class MeasureController : BaseAdminController
 	{
 		#region Fields
 
@@ -45,102 +43,72 @@ namespace Nop.Admin.Controllers
         
         #region Weights
 
-        public ActionResult Weights(string id)
+        public ActionResult Weights()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
 
-            //mark as primary weight (if selected)
-            if (!String.IsNullOrEmpty(id))
-            {
-                int primaryWeightId = Convert.ToInt32(id);
-                var primaryWeight = _measureService.GetMeasureWeightById(primaryWeightId);
-                if (primaryWeight != null)
-                {
-                    _measureSettings.BaseWeightId = primaryWeightId;
-                    _settingService.SaveSetting(_measureSettings);
-                }
-            }
-
-            var weightsModel = _measureService.GetAllMeasureWeights()
-                .Select(x => x.ToModel())
-                .ToList();
-            foreach (var wm in weightsModel)
-                wm.IsPrimaryWeight = wm.Id == _measureSettings.BaseWeightId;
-            var model = new GridModel<MeasureWeightModel>
-			{
-                Data = weightsModel,
-                Total = weightsModel.Count
-			};
-            return View(model);
+            return View();
 		}
 
-		[HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult Weights(GridCommand command)
+		[HttpPost]
+        public ActionResult Weights(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
 
             var weightsModel = _measureService.GetAllMeasureWeights()
                 .Select(x => x.ToModel())
-                .ForCommand(command)
                 .ToList();
             foreach (var wm in weightsModel)
                 wm.IsPrimaryWeight = wm.Id == _measureSettings.BaseWeightId;
-            var model = new GridModel<MeasureWeightModel>
+            var gridModel = new DataSourceResult
             {
                 Data = weightsModel,
                 Total = weightsModel.Count
             };
 
-		    return new JsonResult
-			{
-				Data = model
-			};
+            return Json(gridModel);
 		}
 
-        [GridAction(EnableCustomBinding=true)]
-        public ActionResult WeightUpdate(MeasureWeightModel model, GridCommand command)
+        [HttpPost]
+        public ActionResult WeightUpdate(MeasureWeightModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
             
             if (!ModelState.IsValid)
             {
-                //display the first model error
-                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
-                return Content(modelStateErrors.FirstOrDefault());
+                return Json(new DataSourceResult() { Errors = ModelState.SerializeErrors() });
             }
 
             var weight = _measureService.GetMeasureWeightById(model.Id);
             weight = model.ToEntity(weight);
             _measureService.UpdateMeasureWeight(weight);
-            
-            return Weights(command);
+
+            return new NullJsonResult();
         }
         
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult WeightAdd([Bind(Exclude="Id")] MeasureWeightModel model, GridCommand command)
+        [HttpPost]
+        public ActionResult WeightAdd([Bind(Exclude="Id")] MeasureWeightModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
 
             if (!ModelState.IsValid)
             {
-                //display the first model error
-                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
-                return Content(modelStateErrors.FirstOrDefault());
+                return Json(new DataSourceResult() {Errors = ModelState.SerializeErrors()});
             }
 
             var weight = new MeasureWeight();
             weight = model.ToEntity(weight);
             _measureService.InsertMeasureWeight(weight);
-            
-            return Weights(command);
+
+            return new NullJsonResult();
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult WeightDelete(int id,  GridCommand command)
+        [HttpPost]
+        public ActionResult WeightDelete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
@@ -154,109 +122,94 @@ namespace Nop.Admin.Controllers
 
             _measureService.DeleteMeasureWeight(weight);
 
-            return Weights(command);
+            return new NullJsonResult();
+        }
+
+        public ActionResult MarkAsPrimaryWeight(int id)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
+                return AccessDeniedView();
+
+            var primaryWeight = _measureService.GetMeasureWeightById(id);
+            if (primaryWeight != null)
+            {
+                _measureSettings.BaseWeightId = primaryWeight.Id;
+                _settingService.SaveSetting(_measureSettings);
+            }
+
+            return RedirectToAction("Weights");
         }
 
         #endregion
 
         #region Dimensions
 
-        public ActionResult Dimensions(string id)
+        public ActionResult Dimensions()
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
 
-            //mark as primary dimension (if selected)
-            if (!String.IsNullOrEmpty(id))
-            {
-                int primaryDimensionId = Convert.ToInt32(id);
-                var primaryDimension = _measureService.GetMeasureDimensionById(primaryDimensionId);
-                if (primaryDimension != null)
-                {
-                    _measureSettings.BaseDimensionId = primaryDimensionId;
-                    _settingService.SaveSetting(_measureSettings);
-                }
-            }
-
-            var dimensionsModel = _measureService.GetAllMeasureDimensions()
-                .Select(x => x.ToModel())
-                .ToList();
-            foreach (var wm in dimensionsModel)
-                wm.IsPrimaryDimension = wm.Id == _measureSettings.BaseDimensionId;
-            var model = new GridModel<MeasureDimensionModel>
-            {
-                Data = dimensionsModel,
-                Total = dimensionsModel.Count
-            };
-            return View(model);
+            return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult Dimensions(GridCommand command)
+        [HttpPost]
+        public ActionResult Dimensions(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
 
             var dimensionsModel = _measureService.GetAllMeasureDimensions()
                 .Select(x => x.ToModel())
-                .ForCommand(command)
                 .ToList();
             foreach (var wm in dimensionsModel)
                 wm.IsPrimaryDimension = wm.Id == _measureSettings.BaseDimensionId;
-            var model = new GridModel<MeasureDimensionModel>
+            var gridModel = new DataSourceResult
             {
                 Data = dimensionsModel,
                 Total = dimensionsModel.Count
             };
 
-            return new JsonResult
-            {
-                Data = model
-            };
+            return Json(gridModel);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult DimensionUpdate(MeasureDimensionModel model, GridCommand command)
+        [HttpPost]
+        public ActionResult DimensionUpdate(MeasureDimensionModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
 
             if (!ModelState.IsValid)
             {
-                //display the first model error
-                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
-                return Content(modelStateErrors.FirstOrDefault());
+                return Json(new DataSourceResult() { Errors = ModelState.SerializeErrors() });
             }
 
             var dimension = _measureService.GetMeasureDimensionById(model.Id);
             dimension = model.ToEntity(dimension);
             _measureService.UpdateMeasureDimension(dimension);
-            
-            return Dimensions(command);
+
+            return new NullJsonResult();
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult DimensionAdd([Bind(Exclude="Id")] MeasureDimensionModel model, GridCommand command)
+        [HttpPost]
+        public ActionResult DimensionAdd([Bind(Exclude = "Id")] MeasureDimensionModel model)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
 
             if (!ModelState.IsValid)
             {
-                //display the first model error
-                var modelStateErrors = this.ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage);
-                return Content(modelStateErrors.FirstOrDefault());
+                return Json(new DataSourceResult() { Errors = ModelState.SerializeErrors() });
             }
 
             var dimension = new MeasureDimension();
             dimension = model.ToEntity(dimension);
             _measureService.InsertMeasureDimension(dimension);
 
-            return Dimensions(command);
+            return new NullJsonResult();
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult DimensionDelete(int id, GridCommand command)
+        [HttpPost]
+        public ActionResult DimensionDelete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
                 return AccessDeniedView();
@@ -270,9 +223,22 @@ namespace Nop.Admin.Controllers
 
             _measureService.DeleteMeasureDimension(dimension);
 
-            return Dimensions(command);
+            return new NullJsonResult();
         }
 
+        public ActionResult MarkAsPrimaryDimension(int id)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageMeasures))
+                return AccessDeniedView();
+
+            var primaryDimension = _measureService.GetMeasureDimensionById(id);
+            if (primaryDimension != null)
+            {
+                _measureSettings.BaseDimensionId = id;
+                _settingService.SaveSetting(_measureSettings);
+            }
+            return RedirectToAction("Dimensions");
+        }
         #endregion
 
         #endregion

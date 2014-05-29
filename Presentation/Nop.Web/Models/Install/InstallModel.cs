@@ -41,11 +41,12 @@ namespace Nop.Web.Models.Install
         public string SqlAuthenticationType { get; set; }
         public bool SqlServerCreateDatabase { get; set; }
 
+		public string NuoDbConnectionInfo { get; set; }
+
         public bool UseCustomCollation { get; set; }
         [AllowHtml]
         public string Collation { get; set; }
 
-		public string NuoDbConnectionInfo { get; set; }
 
         public bool DisableSampleDataOption { get; set; }
         public bool InstallSampleData { get; set; }

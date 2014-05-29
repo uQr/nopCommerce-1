@@ -6,7 +6,6 @@ using System.Net;
 using System.Text;
 using System.Web.Routing;
 using Nop.Core;
-using Nop.Core.Domain;
 using Nop.Core.Domain.Catalog;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Orders;
@@ -20,6 +19,7 @@ using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
+using Nop.Services.Security;
 
 namespace Nop.Plugin.Payments.AuthorizeNet
 {
@@ -37,6 +37,7 @@ namespace Nop.Plugin.Payments.AuthorizeNet
         private readonly CurrencySettings _currencySettings;
         private readonly IWebHelper _webHelper;
         private readonly IOrderTotalCalculationService _orderTotalCalculationService;
+        private readonly IEncryptionService _encryptionService;
 
         #endregion
 
@@ -46,8 +47,8 @@ namespace Nop.Plugin.Payments.AuthorizeNet
             ISettingService settingService,
             ICurrencyService currencyService,
             ICustomerService customerService,
-            CurrencySettings currencySettings, IWebHelper webHelper, 
-            IOrderTotalCalculationService orderTotalCalculationService)
+            CurrencySettings currencySettings, IWebHelper webHelper,
+            IOrderTotalCalculationService orderTotalCalculationService, IEncryptionService encryptionService)
         {
             this._authorizeNetPaymentSettings = authorizeNetPaymentSettings;
             this._settingService = settingService;
@@ -56,6 +57,7 @@ namespace Nop.Plugin.Payments.AuthorizeNet
             this._currencySettings = currencySettings;
             this._webHelper = webHelper;
             this._orderTotalCalculationService = orderTotalCalculationService;
+            this._encryptionService = encryptionService;
         }
 
         #endregion
@@ -150,6 +152,7 @@ namespace Nop.Plugin.Payments.AuthorizeNet
             form.Add("x_card_code", processPaymentRequest.CreditCardCvv2);
             form.Add("x_first_name", customer.BillingAddress.FirstName);
             form.Add("x_last_name", customer.BillingAddress.LastName);
+            form.Add("x_email", customer.BillingAddress.Email);
             if (!string.IsNullOrEmpty(customer.BillingAddress.Company))
                 form.Add("x_company", customer.BillingAddress.Company);
             form.Add("x_address", customer.BillingAddress.Address1);
@@ -159,8 +162,9 @@ namespace Nop.Plugin.Payments.AuthorizeNet
             form.Add("x_zip", customer.BillingAddress.ZipPostalCode);
             if (customer.BillingAddress.Country != null)
                 form.Add("x_country", customer.BillingAddress.Country.TwoLetterIsoCode);
-            //20 chars maximum
+            //x_invoice_num is 20 chars maximum. hece we also pass x_description
             form.Add("x_invoice_num", processPaymentRequest.OrderGuid.ToString().Substring(0, 20));
+            form.Add("x_description", string.Format("Full order #{0}", processPaymentRequest.OrderGuid));
             form.Add("x_customer_ip", _webHelper.GetCurrentIpAddress());
 
             string reply = null;
@@ -300,7 +304,67 @@ namespace Nop.Plugin.Payments.AuthorizeNet
         public RefundPaymentResult Refund(RefundPaymentRequest refundPaymentRequest)
         {
             var result = new RefundPaymentResult();
-            result.AddError("Refund method not supported");
+
+            WebClient webClient = new WebClient();
+            NameValueCollection form = new NameValueCollection();
+            form.Add("x_login", _authorizeNetPaymentSettings.LoginId);
+            form.Add("x_tran_key", _authorizeNetPaymentSettings.TransactionKey);
+
+            form.Add("x_delim_data", "TRUE");
+            form.Add("x_delim_char", "|");
+            form.Add("x_encap_char", "");
+            form.Add("x_version", GetApiVersion());
+            form.Add("x_relay_response", "FALSE");
+
+            form.Add("x_method", "CC");
+            form.Add("x_currency_code", _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode);
+
+            string[] codes = refundPaymentRequest.Order.CaptureTransactionId == null ?
+                refundPaymentRequest.Order.AuthorizationTransactionCode.Split(',') : refundPaymentRequest.Order.CaptureTransactionId.Split(',');
+            //x_trans_id. When x_test_request (sandbox) is set to a positive response, 
+            //or when Test mode is enabled on the payment gateway, this value will be "0".
+            form.Add("x_trans_id", codes[0]);
+
+            string maskedCreditCardNumberDecrypted = _encryptionService.DecryptText(refundPaymentRequest.Order.MaskedCreditCardNumber);
+            if (String.IsNullOrEmpty(maskedCreditCardNumberDecrypted) || maskedCreditCardNumberDecrypted.Length < 4)
+            {
+                result.AddError("Last four digits of Credit Card Not Available");
+                return result;
+            }
+            var lastFourDigitsCardNumber = maskedCreditCardNumberDecrypted.Substring(maskedCreditCardNumberDecrypted.Length - 4);
+            form.Add("x_card_num", lastFourDigitsCardNumber); // only last four digits are required for doing a credit
+            form.Add("x_amount", refundPaymentRequest.AmountToRefund.ToString("0.00", CultureInfo.InvariantCulture));
+            //x_invoice_num is 20 chars maximum. hece we also pass x_description
+            form.Add("x_invoice_num", refundPaymentRequest.Order.OrderGuid.ToString().Substring(0, 20));
+            form.Add("x_description", string.Format("Full order #{0}", refundPaymentRequest.Order.OrderGuid));
+            form.Add("x_type", "CREDIT");
+            
+            // Send Request to Authorize and Get Response
+            string reply = null;
+            Byte[] responseData = webClient.UploadValues(GetAuthorizeNETUrl(), form);
+            reply = Encoding.ASCII.GetString(responseData);
+
+            if (!String.IsNullOrEmpty(reply))
+            {
+                string[] responseFields = reply.Split('|');
+                switch (responseFields[0])
+                {
+                    case "1":                         
+                        var isOrderFullyRefunded = (refundPaymentRequest.AmountToRefund + refundPaymentRequest.Order.RefundedAmount == refundPaymentRequest.Order.OrderTotal);
+                        result.NewPaymentStatus = isOrderFullyRefunded ? PaymentStatus.Refunded : PaymentStatus.PartiallyRefunded;
+                        break;
+                    case "2":
+                        result.AddError(string.Format("Declined ({0}: {1})", responseFields[2], responseFields[3]));
+                        break;
+                    case "3":
+                        result.AddError(string.Format("Error: {0}", reply));
+                        break;
+                }
+            }
+            else
+            {
+                result.AddError("Authorize.NET unknown error");
+            }
             return result;
         }
 
@@ -312,7 +376,63 @@ namespace Nop.Plugin.Payments.AuthorizeNet
         public VoidPaymentResult Void(VoidPaymentRequest voidPaymentRequest)
         {
             var result = new VoidPaymentResult();
-            result.AddError("Void method not supported");
+
+            WebClient webClient = new WebClient();
+            NameValueCollection form = new NameValueCollection();
+            form.Add("x_login", _authorizeNetPaymentSettings.LoginId);
+            form.Add("x_tran_key", _authorizeNetPaymentSettings.TransactionKey);
+
+            form.Add("x_delim_data", "TRUE");
+            form.Add("x_delim_char", "|");
+            form.Add("x_encap_char", "");
+            form.Add("x_version", GetApiVersion());
+            form.Add("x_relay_response", "FALSE");
+
+            form.Add("x_method", "CC");
+            form.Add("x_currency_code", _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode);
+
+            string[] codes = voidPaymentRequest.Order.CaptureTransactionId == null ?
+                voidPaymentRequest.Order.AuthorizationTransactionCode.Split(',') : voidPaymentRequest.Order.CaptureTransactionId.Split(',');
+            //x_trans_id. When x_test_request (sandbox) is set to a positive response, 
+            //or when Test mode is enabled on the payment gateway, this value will be "0".
+            form.Add("x_trans_id", codes[0]);
+
+            string maskedCreditCardNumberDecrypted = _encryptionService.DecryptText(voidPaymentRequest.Order.MaskedCreditCardNumber);
+            if (String.IsNullOrEmpty(maskedCreditCardNumberDecrypted) || maskedCreditCardNumberDecrypted.Length < 4)
+            {
+                result.AddError("Last four digits of Credit Card Not Available");
+                return result;
+            }
+            var lastFourDigitsCardNumber = maskedCreditCardNumberDecrypted.Substring(maskedCreditCardNumberDecrypted.Length - 4);
+            form.Add("x_card_num", lastFourDigitsCardNumber); // only last four digits are required for doing a credit            
+            form.Add("x_type", "VOID");
+
+            // Send Request to Authorize and Get Response
+            string reply = null;
+            Byte[] responseData = webClient.UploadValues(GetAuthorizeNETUrl(), form);
+            reply = Encoding.ASCII.GetString(responseData);
+
+            if (!String.IsNullOrEmpty(reply))
+            {
+                string[] responseFields = reply.Split('|');
+                switch (responseFields[0])
+                {
+                    case "1":                        
+                        result.NewPaymentStatus = PaymentStatus.Voided;
+                        break;
+                    case "2":
+                        result.AddError(string.Format("Declined ({0}: {1})", responseFields[2], responseFields[3]));
+                        break;
+                    case "3":
+                        result.AddError(string.Format("Error: {0}", reply));
+                        break;
+                }
+            }
+            else
+            {
+                result.AddError("Authorize.NET unknown error");
+            }
+
             return result;
         }
 
@@ -602,7 +722,7 @@ namespace Nop.Plugin.Payments.AuthorizeNet
         {
             get
             {
-                return false;
+                return true;
             }
         }
 
@@ -613,7 +733,7 @@ namespace Nop.Plugin.Payments.AuthorizeNet
         {
             get
             {
-                return false;
+                return true;
             }
         }
 
@@ -624,7 +744,7 @@ namespace Nop.Plugin.Payments.AuthorizeNet
         {
             get
             {
-                return false;
+                return true;
             }
         }
 
@@ -647,6 +767,17 @@ namespace Nop.Plugin.Payments.AuthorizeNet
             get
             {
                 return PaymentMethodType.Standard;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether we should display a payment information page for this plugin
+        /// </summary>
+        public bool SkipPaymentInfo
+        {
+            get
+            {
+                return false;
             }
         }
 

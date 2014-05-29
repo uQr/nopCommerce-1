@@ -20,6 +20,7 @@ namespace Nop.Core.Domain.Customers
         public static string VatNumber { get { return "VatNumber"; } }
         public static string VatNumberStatusId { get { return "VatNumberStatusId"; } }
         public static string TimeZoneId { get { return "TimeZoneId"; } }
+        public static string CustomCustomerAttributes { get { return "CustomCustomerAttributes"; } }
 
         //Other attributes
         public static string DiscountCouponCode { get { return "DiscountCouponCode"; } }
@@ -39,6 +40,7 @@ namespace Nop.Core.Domain.Customers
         //depends on store
         public static string CurrencyId { get { return "CurrencyId"; } }
         public static string LanguageId { get { return "LanguageId"; } }
+        public static string LanguageAutomaticallyDetected { get { return "LanguageAutomaticallyDetected"; } }
         public static string SelectedPaymentMethod { get { return "SelectedPaymentMethod"; } }
         public static string SelectedShippingOption { get { return "SelectedShippingOption"; } }
         public static string OfferedShippingOptions { get { return "OfferedShippingOptions"; } }

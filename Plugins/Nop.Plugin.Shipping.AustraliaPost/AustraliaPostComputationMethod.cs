@@ -78,7 +78,7 @@ namespace Nop.Plugin.Shipping.AustraliaPost
 
         private int GetWeight(GetShippingOptionRequest getShippingOptionRequest)
         {
-            var totalWeigth = _shippingService.GetShoppingCartTotalWeight(getShippingOptionRequest.Items);
+            var totalWeigth = _shippingService.GetTotalWeight(getShippingOptionRequest.Items);
 
             int value = Convert.ToInt32(Math.Ceiling(this._measureService.ConvertFromPrimaryMeasureWeight(totalWeigth, this.GatewayMeasureWeight)));
             return (value < MIN_WEIGHT ? MIN_WEIGHT : value);
@@ -86,19 +86,19 @@ namespace Nop.Plugin.Shipping.AustraliaPost
 
         private int GetLength(GetShippingOptionRequest getShippingOptionRequest)
         {
-            int value = Convert.ToInt32(Math.Ceiling(this._measureService.ConvertFromPrimaryMeasureDimension(getShippingOptionRequest.GetTotalLength(), this.GatewayMeasureDimension)));
+            int value = Convert.ToInt32(Math.Ceiling(this._measureService.ConvertFromPrimaryMeasureDimension(_shippingService.GetTotalLength(getShippingOptionRequest.Items), this.GatewayMeasureDimension)));
             return (value < MIN_LENGTH ? MIN_LENGTH : value);
         }
 
         private int GetWidth(GetShippingOptionRequest getShippingOptionRequest)
         {
-            int value = Convert.ToInt32(Math.Ceiling(this._measureService.ConvertFromPrimaryMeasureDimension(getShippingOptionRequest.GetTotalWidth(), this.GatewayMeasureDimension)));
+            int value = Convert.ToInt32(Math.Ceiling(this._measureService.ConvertFromPrimaryMeasureDimension(_shippingService.GetTotalWidth(getShippingOptionRequest.Items), this.GatewayMeasureDimension)));
             return (value < MIN_LENGTH ? MIN_LENGTH : value);
         }
 
         private int GetHeight(GetShippingOptionRequest getShippingOptionRequest)
         {
-            int value = Convert.ToInt32(Math.Ceiling(this._measureService.ConvertFromPrimaryMeasureDimension(getShippingOptionRequest.GetTotalHeight(), this.GatewayMeasureDimension)));
+            int value = Convert.ToInt32(Math.Ceiling(this._measureService.ConvertFromPrimaryMeasureDimension(_shippingService.GetTotalHeight(getShippingOptionRequest.Items), this.GatewayMeasureDimension)));
             return (value < MIN_LENGTH ? MIN_LENGTH : value);
         }
 
@@ -239,7 +239,7 @@ namespace Nop.Plugin.Shipping.AustraliaPost
                 return response;
             }
 
-            string zipPostalCodeFrom = _australiaPostSettings.ShippedFromZipPostalCode;
+            string zipPostalCodeFrom = getShippingOptionRequest.ZipPostalCodeFrom;
             string zipPostalCodeTo = getShippingOptionRequest.ShippingAddress.ZipPostalCode;
             int weight = GetWeight(getShippingOptionRequest);
             int length = GetLength(getShippingOptionRequest);
@@ -299,7 +299,8 @@ namespace Nop.Plugin.Shipping.AustraliaPost
                         //domestic services
                         response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "Standard", weight, length, width, height, totalPackages));
                         response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "Express", weight, length, width, height, totalPackages));
-                        response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "EXP_PLT", weight, length, width, height, totalPackages));
+                        //discontinued
+                        //response.ShippingOptions.Add(RequestShippingOption(zipPostalCodeFrom, zipPostalCodeTo, country.TwoLetterIsoCode, "EXP_PLT", weight, length, width, height, totalPackages));
                         break;
                     default:
                         //international services
@@ -363,8 +364,6 @@ namespace Nop.Plugin.Shipping.AustraliaPost
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.GatewayUrl.Hint", "Specify gateway URL");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.AdditionalHandlingCharge", "Additional handling charge.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.AdditionalHandlingCharge.Hint", "Enter additional handling fee to charge your customers.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.ShippedFromZipPostalCode", "Shipped from zip");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.ShippedFromZipPostalCode.Hint", "Specify origin zip code.");
             
             base.Install();
         }
@@ -379,8 +378,6 @@ namespace Nop.Plugin.Shipping.AustraliaPost
             this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.GatewayUrl.Hint");
             this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.AdditionalHandlingCharge");
             this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.AdditionalHandlingCharge.Hint");
-            this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.ShippedFromZipPostalCode");
-            this.DeletePluginLocaleResource("Plugins.Shipping.AustraliaPost.Fields.ShippedFromZipPostalCode.Hint");
             
             base.Uninstall();
         }

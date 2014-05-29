@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Web.Routing;
-using Nop.Core.Domain.Discounts;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Plugins;
@@ -318,6 +317,17 @@ namespace Nop.Plugin.Payments.Manual
             get
             {
                 return PaymentMethodType.Standard;
+            }
+        }
+        
+        /// <summary>
+        /// Gets a value indicating whether we should display a payment information page for this plugin
+        /// </summary>
+        public bool SkipPaymentInfo
+        {
+            get
+            {
+                return false;
             }
         }
 

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Web.Mvc;
 using Nop.Core;
-using Nop.Core.Domain;
 using Nop.Core.Domain.Orders;
 using Nop.Plugin.Widgets.GoogleAnalytics.Models;
 using Nop.Services.Catalog;
@@ -16,7 +15,7 @@ using Nop.Web.Framework.Controllers;
 
 namespace Nop.Plugin.Widgets.GoogleAnalytics.Controllers
 {
-    public class WidgetsGoogleAnalyticsController : Controller
+    public class WidgetsGoogleAnalyticsController : BasePluginController
     {
         private readonly IWorkContext _workContext;
         private readonly IStoreContext _storeContext;
@@ -145,8 +144,8 @@ namespace Nop.Plugin.Widgets.GoogleAnalytics.Controllers
 
         private Order GetLastOrder()
         {
-            var order = _orderService.SearchOrders(_storeContext.CurrentStore.Id, 0, 
-                _workContext.CurrentCustomer.Id, null, null, null, null, null, null, null, 0, 1).FirstOrDefault();
+            var order = _orderService.SearchOrders(storeId: _storeContext.CurrentStore.Id,
+                customerId: _workContext.CurrentCustomer.Id, pageSize: 1).FirstOrDefault();
             return order;
         }
         
@@ -232,18 +231,18 @@ namespace Nop.Plugin.Widgets.GoogleAnalytics.Controllers
                 analyticsEcommerceScript = analyticsEcommerceScript.Replace("{COUNTRY}", order.BillingAddress == null || order.BillingAddress.Country == null ? "" : FixIllegalJavaScriptChars(order.BillingAddress.Country.Name));
 
                 var sb = new StringBuilder();
-                foreach (var item in order.OrderProductVariants)
+                foreach (var item in order.OrderItems)
                 {
                     string analyticsEcommerceDetailScript = googleAnalyticsSettings.EcommerceDetailScript;
                     //get category
                     string categ = "";
-                    var defaultProductCategory = _categoryService.GetProductCategoriesByProductId(item.ProductVariant.ProductId).FirstOrDefault();
+                    var defaultProductCategory = _categoryService.GetProductCategoriesByProductId(item.ProductId).FirstOrDefault();
                     if (defaultProductCategory != null)
                         categ = defaultProductCategory.Category.Name;
                     analyticsEcommerceDetailScript = analyticsEcommerceDetailScript.Replace("{ORDERID}", item.OrderId.ToString());
                     //The SKU code is a required parameter for every item that is added to the transaction
-                    analyticsEcommerceDetailScript = analyticsEcommerceDetailScript.Replace("{PRODUCTSKU}", FixIllegalJavaScriptChars(item.ProductVariant.FormatSku(item.AttributesXml, _productAttributeParser)));
-                    analyticsEcommerceDetailScript = analyticsEcommerceDetailScript.Replace("{PRODUCTNAME}", FixIllegalJavaScriptChars(item.ProductVariant.FullProductName));
+                    analyticsEcommerceDetailScript = analyticsEcommerceDetailScript.Replace("{PRODUCTSKU}", FixIllegalJavaScriptChars(item.Product.FormatSku(item.AttributesXml, _productAttributeParser)));
+                    analyticsEcommerceDetailScript = analyticsEcommerceDetailScript.Replace("{PRODUCTNAME}", FixIllegalJavaScriptChars(item.Product.Name));
                     analyticsEcommerceDetailScript = analyticsEcommerceDetailScript.Replace("{CATEGORYNAME}", FixIllegalJavaScriptChars(categ));
                     analyticsEcommerceDetailScript = analyticsEcommerceDetailScript.Replace("{UNITPRICE}", item.UnitPriceInclTax.ToString("0.00", usCulture));
                     analyticsEcommerceDetailScript = analyticsEcommerceDetailScript.Replace("{QUANTITY}", item.Quantity.ToString());

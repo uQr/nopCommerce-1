@@ -11,6 +11,7 @@ namespace Nop.Core.Plugins
         public PluginDescriptor()
         {
             this.SupportedVersions = new List<string>();
+            this.LimitedToStores = new List<int>();
         }
 
 
@@ -78,6 +79,11 @@ namespace Nop.Core.Plugins
         public virtual int DisplayOrder { get; set; }
 
         /// <summary>
+        /// Gets or sets the list of store identifiers in which this plugin is available. If empty, then this plugin is available in all stores
+        /// </summary>
+        public virtual IList<int> LimitedToStores { get; set; }
+
+        /// <summary>
         /// Gets or sets the value indicating whether plugin is installed
         /// </summary>
         public virtual bool Installed { get; set; }
@@ -85,7 +91,7 @@ namespace Nop.Core.Plugins
         public virtual T Instance<T>() where T : class, IPlugin
         {
             object instance;
-            if (!EngineContext.Current.ContainerManager.TryResolve(PluginType, out instance))
+            if (!EngineContext.Current.ContainerManager.TryResolve(PluginType, null, out instance))
             {
                 //not resolved
                 instance = EngineContext.Current.ContainerManager.ResolveUnregistered(PluginType);

@@ -9,13 +9,14 @@ using Nop.Services.Common;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Security;
+using Nop.Services.Stores;
 using Nop.Web.Framework.Controllers;
-using Telerik.Web.Mvc;
+using Nop.Web.Framework.Kendoui;
+using Nop.Web.Framework.Mvc;
 
 namespace Nop.Admin.Controllers
 {
-	[AdminAuthorize]
-    public partial class CountryController : BaseNopController
+    public partial class CountryController : BaseAdminController
 	{
 		#region Fields
 
@@ -25,16 +26,23 @@ namespace Nop.Admin.Controllers
 	    private readonly IAddressService _addressService;
         private readonly IPermissionService _permissionService;
 	    private readonly ILocalizedEntityService _localizedEntityService;
-	    private readonly ILanguageService _languageService;
+        private readonly ILanguageService _languageService;
+        private readonly IStoreService _storeService;
+        private readonly IStoreMappingService _storeMappingService;
 
 	    #endregion
 
 		#region Constructors
 
         public CountryController(ICountryService countryService,
-            IStateProvinceService stateProvinceService, ILocalizationService localizationService,
-            IAddressService addressService, IPermissionService permissionService,
-            ILocalizedEntityService localizedEntityService, ILanguageService languageService)
+            IStateProvinceService stateProvinceService, 
+            ILocalizationService localizationService,
+            IAddressService addressService, 
+            IPermissionService permissionService,
+            ILocalizedEntityService localizedEntityService, 
+            ILanguageService languageService,
+            IStoreService storeService,
+            IStoreMappingService storeMappingService)
 		{
             this._countryService = countryService;
             this._stateProvinceService = stateProvinceService;
@@ -43,6 +51,8 @@ namespace Nop.Admin.Controllers
             this._permissionService = permissionService;
             this._localizedEntityService = localizedEntityService;
             this._languageService = languageService;
+            this._storeService = storeService;
+            this._storeMappingService = storeMappingService;
 		}
 
 		#endregion 
@@ -72,6 +82,53 @@ namespace Nop.Admin.Controllers
                                                                localized.LanguageId);
             }
         }
+
+        [NonAction]
+        private void PrepareStoresMappingModel(CountryModel model, Country country, bool excludeProperties)
+        {
+            if (model == null)
+                throw new ArgumentNullException("model");
+
+            model.AvailableStores = _storeService
+                .GetAllStores()
+                .Select(s => s.ToModel())
+                .ToList();
+            if (!excludeProperties)
+            {
+                if (country != null)
+                {
+                    model.SelectedStoreIds = _storeMappingService.GetStoresIdsWithAccess(country);
+                }
+                else
+                {
+                    model.SelectedStoreIds = new int[0];
+                }
+            }
+        }
+
+        [NonAction]
+        protected void SaveStoreMappings(Country country, CountryModel model)
+        {
+            var existingStoreMappings = _storeMappingService.GetStoreMappings(country);
+            var allStores = _storeService.GetAllStores();
+            foreach (var store in allStores)
+            {
+                if (model.SelectedStoreIds != null && model.SelectedStoreIds.Contains(store.Id))
+                {
+                    //new role
+                    if (existingStoreMappings.Count(sm => sm.StoreId == store.Id) == 0)
+                        _storeMappingService.InsertStoreMapping(country, store.Id);
+                }
+                else
+                {
+                    //removed role
+                    var storeMappingToDelete = existingStoreMappings.FirstOrDefault(sm => sm.StoreId == store.Id);
+                    if (storeMappingToDelete != null)
+                        _storeMappingService.DeleteStoreMapping(storeMappingToDelete);
+                }
+            }
+        }
+
         #endregion
 
         #region Countries
@@ -86,32 +143,23 @@ namespace Nop.Admin.Controllers
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
                 return AccessDeniedView();
 
-            var countries = _countryService.GetAllCountries(true);
-            var model = new GridModel<CountryModel>
-            {
-                Data = countries.Select(x => x.ToModel()),
-                Total = countries.Count
-            };
-            return View(model);
+            return View();
         }
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult CountryList(GridCommand command)
+        [HttpPost]
+        public ActionResult CountryList(DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
                 return AccessDeniedView();
 
             var countries = _countryService.GetAllCountries(true);
-            var model = new GridModel<CountryModel>
+            var gridModel = new DataSourceResult
             {
                 Data = countries.Select(x => x.ToModel()),
                 Total = countries.Count
             };
 
-            return new JsonResult
-            {
-                Data = model
-            };
+            return Json(gridModel);
         }
         
         public ActionResult Create()
@@ -122,6 +170,8 @@ namespace Nop.Admin.Controllers
             var model = new CountryModel();
             //locales
             AddLocales(_languageService, model.Locales);
+            //Stores
+            PrepareStoresMappingModel(model, null, false);
             //default values
             model.Published = true;
             model.AllowsBilling = true;
@@ -129,7 +179,7 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Create(CountryModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
@@ -141,12 +191,17 @@ namespace Nop.Admin.Controllers
                 _countryService.InsertCountry(country);
                 //locales
                 UpdateLocales(country, model);
+                //Stores
+                SaveStoreMappings(country, model);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Configuration.Countries.Added"));
                 return continueEditing ? RedirectToAction("Edit", new { id = country.Id }) : RedirectToAction("List");
             }
 
             //If we got this far, something failed, redisplay form
+
+            //Stores
+            PrepareStoresMappingModel(model, null, true);
             return View(model);
         }
 
@@ -166,10 +221,12 @@ namespace Nop.Admin.Controllers
             {
                 locale.Name = country.GetLocalized(x => x.Name, languageId, false, false);
             });
+            //Stores
+            PrepareStoresMappingModel(model, country, false);
             return View(model);
         }
 
-        [HttpPost, ParameterBasedOnFormNameAttribute("save-continue", "continueEditing")]
+        [HttpPost, ParameterBasedOnFormName("save-continue", "continueEditing")]
         public ActionResult Edit(CountryModel model, bool continueEditing)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
@@ -186,12 +243,28 @@ namespace Nop.Admin.Controllers
                 _countryService.UpdateCountry(country);
                 //locales
                 UpdateLocales(country, model);
+                //Stores
+                SaveStoreMappings(country, model);
 
                 SuccessNotification(_localizationService.GetResource("Admin.Configuration.Countries.Updated"));
-                return continueEditing ? RedirectToAction("Edit", new { id = country.Id }) : RedirectToAction("List");
+
+                if (continueEditing)
+                {
+                    //selected tab
+                    SaveSelectedTabIndex();
+
+                    return RedirectToAction("Edit", new {id = country.Id});
+                }
+                else
+                {
+                    return RedirectToAction("List");
+                }
             }
 
             //If we got this far, something failed, redisplay form
+
+            //Stores
+            PrepareStoresMappingModel(model, country, true);
             return View(model);
         }
 
@@ -223,31 +296,61 @@ namespace Nop.Admin.Controllers
             }
         }
 
+        [HttpPost]
+        public ActionResult PublishSelected(ICollection<int> selectedIds)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
+                return AccessDeniedView();
+
+            if (selectedIds != null)
+            {
+                var countries = _countryService.GetCountriesByIds(selectedIds.ToArray());
+                foreach (var country in countries)
+                {
+                    country.Published = true;
+                    _countryService.UpdateCountry(country);
+                }
+            }
+
+            return Json(new { Result = true });
+        }
+        [HttpPost]
+        public ActionResult UnpublishSelected(ICollection<int> selectedIds)
+        {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
+                return AccessDeniedView();
+
+            if (selectedIds != null)
+            {
+                var countries = _countryService.GetCountriesByIds(selectedIds.ToArray());
+                foreach (var country in countries)
+                {
+                    country.Published = false;
+                    _countryService.UpdateCountry(country);
+                }
+            }
+            return Json(new { Result = true });
+        }
 
         #endregion
 
         #region States / provinces
 
-        [HttpPost, GridAction(EnableCustomBinding = true)]
-        public ActionResult States(int countryId, GridCommand command)
+        [HttpPost]
+        public ActionResult States(int countryId, DataSourceRequest command)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
                 return AccessDeniedView();
 
-            var states = _stateProvinceService.GetStateProvincesByCountryId(countryId, true)
-                .Select(x => x.ToModel());
+            var states = _stateProvinceService.GetStateProvincesByCountryId(countryId, true);
 
-            var model = new GridModel<StateProvinceModel>
+            var gridModel = new DataSourceResult
             {
-                Data = states,
-                Total = states.Count()
+                Data = states.Select(x => x.ToModel()),
+                Total = states.Count
             };
-            return new JsonResult
-            {
-                Data = model
-            };
+            return Json(gridModel);
         }
-
 
         //create
         public ActionResult StateCreatePopup(int countryId)
@@ -339,8 +442,8 @@ namespace Nop.Admin.Controllers
             return View(model);
         }
 
-        [GridAction(EnableCustomBinding = true)]
-        public ActionResult StateDelete(int id, GridCommand command)
+        [HttpPost]
+        public ActionResult StateDelete(int id)
         {
             if (!_permissionService.Authorize(StandardPermissionProvider.ManageCountries))
                 return AccessDeniedView();
@@ -352,11 +455,10 @@ namespace Nop.Admin.Controllers
             if (_addressService.GetAddressTotalByStateProvinceId(state.Id) > 0)
                 return Content(_localizationService.GetResource("Admin.Configuration.Countries.States.CantDeleteWithAddresses"));
 
-            int countryId = state.CountryId;
+            //int countryId = state.CountryId;
             _stateProvinceService.DeleteStateProvince(state);
 
-
-            return States(countryId, command);
+            return new NullJsonResult();
         }
 
         [AcceptVerbs(HttpVerbs.Get)]

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Text;
 using System.Web;
@@ -131,7 +130,7 @@ namespace Nop.Plugin.Payments.PayPalDirect
             req.DoDirectPaymentRequest.Version = GetApiVersion();
             var details = new DoDirectPaymentRequestDetailsType();
             req.DoDirectPaymentRequest.DoDirectPaymentRequestDetails = details;
-            details.IPAddress = _webHelper.GetCurrentIpAddress();
+            details.IPAddress = _webHelper.GetCurrentIpAddress() ?? "";
             if (authorizeOnly)
                 details.PaymentAction = PaymentActionCodeType.Authorization;
             else
@@ -837,6 +836,17 @@ namespace Nop.Plugin.Payments.PayPalDirect
             get
             {
                 return PaymentMethodType.Standard;
+            }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether we should display a payment information page for this plugin
+        /// </summary>
+        public bool SkipPaymentInfo
+        {
+            get
+            {
+                return false;
             }
         }
 

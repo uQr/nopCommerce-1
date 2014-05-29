@@ -47,29 +47,25 @@ namespace Nop.Services.Orders
         /// <param name="storeId">Store identifier; null to load all orders</param>
         /// <param name="vendorId">Vendor identifier; null to load all orders</param>
         /// <param name="customerId">Customer identifier; null to load all orders</param>
+        /// <param name="productId">Product identifier which was purchased in an order; 0 to load all orders</param>
+        /// <param name="affiliateId">Affiliate identifier; 0 to load all orders</param>
         /// <param name="createdFromUtc">Created date from (UTC); null to load all records</param>
         /// <param name="createdToUtc">Created date to (UTC); null to load all records</param>
         /// <param name="os">Order status; null to load all orders</param>
         /// <param name="ps">Order payment status; null to load all orders</param>
-        /// <param name="ss">Order shippment status; null to load all orders</param>
+        /// <param name="ss">Order shipment status; null to load all orders</param>
         /// <param name="billingEmail">Billing email. Leave empty to load all records.</param>
         /// <param name="orderGuid">Search by order GUID (Global unique identifier) or part of GUID. Leave empty to load all records.</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <returns>Order collection</returns>
-        IPagedList<Order> SearchOrders(int storeId, int vendorId, int customerId,
-            DateTime? createdFromUtc, DateTime? createdToUtc, 
-            OrderStatus? os, PaymentStatus? ps, ShippingStatus? ss, 
-            string billingEmail, string orderGuid, int pageIndex, int pageSize);
-        
-        /// <summary>
-        /// Gets all orders by affiliate identifier
-        /// </summary>
-        /// <param name="affiliateId">Affiliate identifier</param>
-        /// <param name="pageIndex">Page index</param>
-        /// <param name="pageSize">Page size</param>
-        /// <returns>Orders</returns>
-        IPagedList<Order> GetOrdersByAffiliateId(int affiliateId, int pageIndex, int pageSize);
+        IPagedList<Order> SearchOrders(int storeId = 0,
+            int vendorId = 0, int customerId = 0, 
+            int productId = 0, int affiliateId = 0,
+            DateTime? createdFromUtc = null, DateTime? createdToUtc = null,
+            OrderStatus? os = null, PaymentStatus? ps = null, ShippingStatus? ss = null,
+            string billingEmail = null, string orderGuid = null,
+            int pageIndex = 0, int pageSize = int.MaxValue);
         
         /// <summary>
         /// Inserts an order
@@ -84,12 +80,6 @@ namespace Nop.Services.Orders
         void UpdateOrder(Order order);
 
         /// <summary>
-        /// Deletes an order note
-        /// </summary>
-        /// <param name="orderNote">The order note</param>
-        void DeleteOrderNote(OrderNote orderNote);
-
-        /// <summary>
         /// Get an order by authorization transaction ID and payment method system name
         /// </summary>
         /// <param name="authorizationTransactionId">Authorization transaction ID</param>
@@ -99,24 +89,24 @@ namespace Nop.Services.Orders
         
         #endregion
 
-        #region Orders product variants
+        #region Orders items
         
         /// <summary>
-        /// Gets an order product variant
+        /// Gets an order item
         /// </summary>
-        /// <param name="orderProductVariantId">Order product variant identifier</param>
-        /// <returns>Order product variant</returns>
-        OrderProductVariant GetOrderProductVariantById(int orderProductVariantId);
+        /// <param name="orderItemId">Order item identifier</param>
+        /// <returns>Order item</returns>
+        OrderItem GetOrderItemById(int orderItemId);
 
         /// <summary>
-        /// Gets an order product variant
+        /// Gets an order item
         /// </summary>
-        /// <param name="orderProductVariantGuid">Order product variant identifier</param>
-        /// <returns>Order product variant</returns>
-        OrderProductVariant GetOrderProductVariantByGuid(Guid orderProductVariantGuid);
+        /// <param name="orderItemGuid">Order item identifier</param>
+        /// <returns>Order item</returns>
+        OrderItem GetOrderItemByGuid(Guid orderItemGuid);
 
         /// <summary>
-        /// Gets all order product variants
+        /// Gets all order items
         /// </summary>
         /// <param name="orderId">Order identifier; null to load all records</param>
         /// <param name="customerId">Customer identifier; null to load all records</param>
@@ -124,19 +114,36 @@ namespace Nop.Services.Orders
         /// <param name="createdToUtc">Order created date to (UTC); null to load all records</param>
         /// <param name="os">Order status; null to load all records</param>
         /// <param name="ps">Order payment status; null to load all records</param>
-        /// <param name="ss">Order shippment status; null to load all records</param>
+        /// <param name="ss">Order shipment status; null to load all records</param>
         /// <param name="loadDownloableProductsOnly">Value indicating whether to load downloadable products only</param>
-        /// <returns>Order collection</returns>
-        IList<OrderProductVariant> GetAllOrderProductVariants(int? orderId,
+        /// <returns>Order items</returns>
+        IList<OrderItem> GetAllOrderItems(int? orderId,
            int? customerId, DateTime? createdFromUtc, DateTime? createdToUtc, 
            OrderStatus? os, PaymentStatus? ps, ShippingStatus? ss,
            bool loadDownloableProductsOnly = false);
 
         /// <summary>
-        /// Delete an order product variant
+        /// Delete an order item
         /// </summary>
-        /// <param name="orderProductVariant">The order product variant</param>
-        void DeleteOrderProductVariant(OrderProductVariant orderProductVariant);
+        /// <param name="orderItem">The order item</param>
+        void DeleteOrderItem(OrderItem orderItem);
+
+        #endregion
+
+        #region Orders
+
+        /// <summary>
+        /// Gets an order note
+        /// </summary>
+        /// <param name="orderNoteId">The order note identifier</param>
+        /// <returns>Order note</returns>
+        OrderNote GetOrderNoteById(int orderNoteId);
+
+        /// <summary>
+        /// Deletes an order note
+        /// </summary>
+        /// <param name="orderNote">The order note</param>
+        void DeleteOrderNote(OrderNote orderNote);
 
         #endregion
 
@@ -204,13 +211,13 @@ namespace Nop.Services.Orders
         /// </summary>
         /// <param name="storeId">Store identifier; 0 to load all entries</param>
         /// <param name="customerId">Customer identifier; 0 to load all entries</param>
-        /// <param name="orderProductVariantId">Order product variant identifier; 0 to load all entries</param>
+        /// <param name="orderItemId">Order item identifier; 0 to load all entries</param>
         /// <param name="rs">Return request status; null to load all entries</param>
         /// <param name="pageIndex">Page index</param>
         /// <param name="pageSize">Page size</param>
         /// <returns>Return requests</returns>
         IPagedList<ReturnRequest> SearchReturnRequests(int storeId, int customerId,
-            int orderProductVariantId, ReturnRequestStatus? rs, int pageIndex, int pageSize);
+            int orderItemId, ReturnRequestStatus? rs, int pageIndex, int pageSize);
         
         #endregion
     }
